@@ -1,0 +1,73 @@
+{
+  "name": "desktoppet",
+  "version": "1.0.0",
+  "description": "一款跨平台（Windows + macOS）桌面宠物软件，采用 Electron + Web 技术栈，使用 Three.js 渲染 3D 模型宠物。",
+  "main": "./out/main/index.js",
+  "author": "DesktopPet Team",
+  "license": "MIT",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
+    "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web"
+  },
+  "dependencies": {
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "three": "^0.184.0",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@electron-toolkit/preload": "^3.0.2",
+    "@electron-toolkit/utils": "^4.0.0",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.184.1",
+    "@vitejs/plugin-react": "^4.7.0",
+    "electron": "^42.3.3",
+    "electron-builder": "^25.1.8",
+    "electron-store": "^11.0.2",
+    "electron-vite": "^5.0.0",
+    "typescript": "^6.0.3",
+    "vite": "^7.3.5"
+  },
+  "build": {
+    "appId": "com.desktoppet.app",
+    "productName": "DesktopPet",
+    "directories": {
+      "buildResources": "resources"
+    },
+    "files": [
+      "!**/.vscode/*",
+      "!src/*",
+      "!docs/*",
+      "!electron.vite.config.*",
+      "!{.eslintignore,.eslintrc.*,.prettierignore,.prettierrc.*,tsconfig.*,tsconfig.*.json}",
+      "!README.md",
+      "!CLAUDE.md"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "resources/icon.ico"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "icon": "resources/icon.icns"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  }
+}
