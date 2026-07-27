@@ -22,7 +22,6 @@ const MENU_ITEMS: MenuItemData[] = [
   { label: '喂食', icon: '🍖', action: 'feed' },
   { label: '聊天', icon: '💬', action: 'chat' },
   { separator: true, label: '' },
-  { label: '系统监控', icon: '📊', action: 'tool:system' },
   { label: '番茄钟', icon: '🍅', action: 'tool:pomodoro' },
   { separator: true, label: '' },
   { label: '更换形象', icon: '🎨', action: 'change-avatar' },

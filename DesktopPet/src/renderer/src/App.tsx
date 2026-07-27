@@ -11,6 +11,7 @@ import StatusBars from './components/StatusBar/StatusBars'
 import ContextMenu from './components/ContextMenu/ContextMenu'
 import AvatarSelector from './components/AvatarSelector/AvatarSelector'
 import ToolsContainer from './components/Tools/ToolsContainer'
+import SystemInfoBar from './components/StatusBar/SystemInfoBar'
 import ChatWindow from './components/ChatPanel/ChatWindow'
 import SettingsPanel from './components/Settings/SettingsPanel'
 import { usePetStore } from './stores/petStore'
@@ -141,6 +142,7 @@ const App: React.FC = () => {
       <StatusBars />
       <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
         <PetScene />
+        <SystemInfoBar />
       </div>
       <ContextMenu />
       <AvatarSelector />

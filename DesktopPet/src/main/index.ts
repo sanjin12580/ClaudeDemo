@@ -1,6 +1,6 @@
-import { app, shell, BrowserWindow, Tray, Menu, ipcMain, screen, nativeImage } from 'electron'
+import { app, shell, BrowserWindow, Tray, screen } from 'electron'
 import { join } from 'path'
-import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { is } from '@electron-toolkit/utils'
 import { createTray } from './tray'
 import { registerIpcHandlers } from './ipc-handlers'
 
@@ -22,6 +22,7 @@ function createPetWindow(): BrowserWindow {
     y: screenHeight - PET_WINDOW_HEIGHT - 20,
     transparent: true,           // 透明背景
     frame: false,                // 无边框
+    thickFrame: false,           // 去除 Windows 窗口白条/边框
     alwaysOnTop: true,           // 始终置顶
     resizable: false,
     skipTaskbar: true,           // 不在任务栏显示
@@ -34,11 +35,24 @@ function createPetWindow(): BrowserWindow {
     }
   })
 
+  // 清空标题，防止 Windows 在透明窗口上渲染标题文字
+  mainWindow.setTitle('')
+
   // 设置窗口忽略鼠标事件（非宠物区域穿透）
   // 渲染进程会通过 IPC 控制此行为
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
   })
+
+  // 防止 Windows DWM 在截图/失焦时重绘白条
+  if (process.platform === 'win32') {
+    mainWindow.on('blur', () => {
+      mainWindow?.setBackgroundColor('#00000000')
+    })
+    mainWindow.on('focus', () => {
+      mainWindow?.setBackgroundColor('#00000000')
+    })
+  }
 
   // 在 macOS 上设置窗口级别更高
   if (process.platform === 'darwin') {
@@ -64,8 +78,10 @@ function createPetWindow(): BrowserWindow {
 
 // 应用初始化
 app.whenReady().then(() => {
-  // 设置 app user model id (Windows)
-  electronApp.setAutoLaunch(false)
+  // Windows: 设置 app user model id
+  if (process.platform === 'win32') {
+    app.setAppUserModelId(is.dev ? process.execPath : 'com.desktoppet.app')
+  }
 
   // 创建宠物窗口
   createPetWindow()
@@ -75,11 +91,6 @@ app.whenReady().then(() => {
 
   // 注册 IPC 处理器
   registerIpcHandlers(mainWindow!)
-
-  // 开发模式下打开 DevTools 的快捷键
-  app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window)
-  })
 
   // macOS: 点击 dock 图标时重新显示窗口
   app.on('activate', () => {

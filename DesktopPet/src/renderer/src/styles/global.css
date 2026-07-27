@@ -12,6 +12,15 @@ html, body, #root {
   overflow: hidden;
   background: transparent;
   font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  border: none;
+  outline: none;
+}
+
+/* 去除 Canvas 默认边框 */
+canvas {
+  display: block;
+  outline: none;
+  border: none;
 }
 
 /* 可拖拽区域标记 */
