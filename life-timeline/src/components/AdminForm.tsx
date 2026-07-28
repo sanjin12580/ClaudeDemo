@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Category } from '../lib/types';
+import { useI18n } from '../lib/i18n';
 
 const CATEGORIES: Category[] = ['教育', '工作', '旅行', '健康', '关系', '项目', '其他'];
 
@@ -24,6 +25,7 @@ const EMPTY_FORM: FormData = {
 };
 
 export default function AdminForm() {
+  const { admin: t } = useI18n();
   const [form, setForm] = useState<FormData>(EMPTY_FORM);
   const [status, setStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
@@ -37,7 +39,7 @@ export default function AdminForm() {
 
     if (!form.date || !form.title) {
       setStatus('error');
-      setMessage('请填写日期和标题');
+      setMessage(t.validationError);
       return;
     }
 
@@ -54,7 +56,7 @@ export default function AdminForm() {
           category: form.category,
           tags: form.tags
             .split(/[,，]/)
-            .map((t) => t.trim())
+            .map((tg) => tg.trim())
             .filter(Boolean),
           importance: form.importance,
           location: form.location || undefined,
@@ -66,15 +68,15 @@ export default function AdminForm() {
 
       if (resp.ok && data.success) {
         setStatus('success');
-        setMessage(`事件已保存: ${data.path}`);
+        setMessage(t.saved(data.path));
         setForm(EMPTY_FORM);
       } else {
         setStatus('error');
-        setMessage(data.error || '保存失败');
+        setMessage(data.error || t.saveFailed);
       }
     } catch (err) {
       setStatus('error');
-      setMessage(`网络错误: ${err instanceof Error ? err.message : '未知错误'}`);
+      setMessage(t.networkError(err instanceof Error ? err.message : t.unknownError));
     }
   }
 
@@ -82,7 +84,7 @@ export default function AdminForm() {
     <form onSubmit={handleSubmit} className="space-y-5 max-w-2xl">
       {/* 日期 */}
       <div>
-        <label className="block text-sm font-medium mb-1">日期 *</label>
+        <label className="block text-sm font-medium mb-1">{t.dateLabel}</label>
         <input
           type="date"
           value={form.date}
@@ -90,17 +92,17 @@ export default function AdminForm() {
           className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900
                      px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
         />
-        <p className="text-xs text-gray-400 mt-1">精确到日，也可手动输入如 2024-03（只到月）</p>
+        <p className="text-xs text-gray-400 mt-1">{t.dateHint}</p>
       </div>
 
       {/* 标题 */}
       <div>
-        <label className="block text-sm font-medium mb-1">标题 *</label>
+        <label className="block text-sm font-medium mb-1">{t.titleLabel}</label>
         <input
           type="text"
           value={form.title}
           onChange={(e) => update('title', e.target.value)}
-          placeholder="如：入职新公司、武功山徒步"
+          placeholder={t.titlePlaceholder}
           className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900
                      px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
         />
@@ -108,7 +110,7 @@ export default function AdminForm() {
 
       {/* 分类 */}
       <div>
-        <label className="block text-sm font-medium mb-1">分类</label>
+        <label className="block text-sm font-medium mb-1">{t.categoryLabel}</label>
         <div className="flex gap-2 flex-wrap">
           {CATEGORIES.map((cat) => (
             <button
@@ -129,7 +131,7 @@ export default function AdminForm() {
 
       {/* 重要性 */}
       <div>
-        <label className="block text-sm font-medium mb-1">重要性: {form.importance}/5</label>
+        <label className="block text-sm font-medium mb-1">{t.importanceLabel}: {form.importance}/5</label>
         <input
           type="range"
           min="1"
@@ -139,19 +141,19 @@ export default function AdminForm() {
           className="w-full accent-green-500"
         />
         <div className="flex justify-between text-xs text-gray-400">
-          <span>1（轻微）</span>
-          <span>5（里程碑）</span>
+          <span>{t.importanceMin}</span>
+          <span>{t.importanceMax}</span>
         </div>
       </div>
 
       {/* 地点 */}
       <div>
-        <label className="block text-sm font-medium mb-1">地点</label>
+        <label className="block text-sm font-medium mb-1">{t.locationLabel}</label>
         <input
           type="text"
           value={form.location}
           onChange={(e) => update('location', e.target.value)}
-          placeholder="如：深圳、武功山"
+          placeholder={t.locationPlaceholder}
           className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900
                      px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
         />
@@ -159,12 +161,12 @@ export default function AdminForm() {
 
       {/* 标签 */}
       <div>
-        <label className="block text-sm font-medium mb-1">标签</label>
+        <label className="block text-sm font-medium mb-1">{t.tagsLabel}</label>
         <input
           type="text"
           value={form.tags}
           onChange={(e) => update('tags', e.target.value)}
-          placeholder="多个标签用逗号分隔，如：前端, React, 转折点"
+          placeholder={t.tagsPlaceholder}
           className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900
                      px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
         />
@@ -172,12 +174,12 @@ export default function AdminForm() {
 
       {/* 正文 */}
       <div>
-        <label className="block text-sm font-medium mb-1">正文</label>
+        <label className="block text-sm font-medium mb-1">{t.contentLabel}</label>
         <textarea
           value={form.content}
           onChange={(e) => update('content', e.target.value)}
           rows={6}
-          placeholder="Markdown 格式，可嵌入图片链接和视频链接..."
+          placeholder={t.contentPlaceholder}
           className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900
                      px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none resize-y"
         />
@@ -190,7 +192,7 @@ export default function AdminForm() {
         className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-green-600 text-white text-sm font-medium
                    hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {status === 'saving' ? '保存中...' : '保存事件'}
+        {status === 'saving' ? t.savingBtn : t.submitBtn}
       </button>
 
       {/* 状态消息 */}

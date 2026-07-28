@@ -2,8 +2,8 @@
 import Layout from '../../layouts/Layout.astro';
 import EventCard from '../../components/EventCard';
 import { loadEvents } from '../../lib/parseEvents';
+import { t } from '../../lib/i18n';
 
-// 预渲染所有有事件的年份
 export async function getStaticPaths() {
   const events = await loadEvents();
   const years = new Set<string>();
@@ -18,10 +18,9 @@ const { year } = Astro.params;
 const allEvents = await loadEvents();
 const yearEvents = allEvents.filter((e) => e.date.startsWith(year));
 
-// 按月份分组
 const monthGroups = new Map<string, typeof yearEvents>();
 for (const event of yearEvents) {
-  const month = event.date.slice(0, 7); // "YYYY-MM"
+  const month = event.date.slice(0, 7);
   if (!monthGroups.has(month)) monthGroups.set(month, []);
   monthGroups.get(month)!.push(event);
 }
@@ -34,21 +33,21 @@ for (const event of yearEvents) {
         href="/timeline"
         class="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
       >
-        ← 返回时间线
+        {t.yearPage.back}
       </a>
       <h1 class="text-3xl font-bold tracking-tight mt-2">{year} 年</h1>
       <p class="mt-2 text-gray-500 dark:text-gray-400">
-        共 {yearEvents.length} 个事件
+        {t.yearPage.count(yearEvents.length)}
       </p>
     </div>
 
     {
       yearEvents.length === 0 ? (
         <div class="text-center py-16 text-gray-400">
-          这一年还没有记录
+          {t.yearPage.empty}
           <br />
           <a href="/admin" class="text-green-600 hover:underline text-sm mt-2 inline-block">
-            去添加 →
+            {t.yearPage.goAdd}
           </a>
         </div>
       ) : (
