@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+/* 自定义 CSS 变量 - 贡献图颜色主题 */
+:root {
+  --color-life-0: #ebedf0;   /* 无事件 */
+  --color-life-1: #9be9a8;   /* 轻微 */
+  --color-life-2: #40c463;   /* 中等 */
+  --color-life-3: #30a14e;   /* 较多 */
+  --color-life-4: #216e39;   /* 丰富 */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}

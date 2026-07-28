@@ -1,0 +1,21 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Timeline from '../../components/Timeline';
+import { loadEvents } from '../../lib/parseEvents';
+
+const events = await loadEvents();
+---
+
+<Layout title="时间线" description="按时间顺序浏览所有人生事件">
+  <div class="space-y-8">
+    <div>
+      <h1 class="text-3xl font-bold tracking-tight">📜 时间线</h1>
+      <p class="mt-2 text-gray-500 dark:text-gray-400">
+        按时间倒序浏览所有事件，支持按分类和标签筛选。
+      </p>
+    </div>
+
+    <!-- 时间线（React 岛屿，客户端渲染） -->
+    <Timeline events={events} client:load />
+  </div>
+</Layout>
