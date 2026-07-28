@@ -1,0 +1,20 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import AdminForm from '../../components/AdminForm';
+---
+
+<Layout title="管理后台" description="创建和编辑人生事件">
+  <div class="space-y-8">
+    <div>
+      <h1 class="text-3xl font-bold tracking-tight">⚙️ 管理后台</h1>
+      <p class="mt-2 text-gray-500 dark:text-gray-400">
+        创建新的人生事件。文件将保存到 <code class="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">src/content/events/</code> 目录。
+      </p>
+      <div class="mt-3 px-3 py-2 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg text-sm text-amber-700 dark:text-amber-300">
+        ⚠️ 此功能仅在本地开发环境 (<code>npm run dev</code>) 下可用。
+      </div>
+    </div>
+
+    <AdminForm client:load />
+  </div>
+</Layout>

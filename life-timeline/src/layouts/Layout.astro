@@ -1,0 +1,31 @@
+---
+// 基础布局组件
+export interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description || '记录我的一生'} />
+    <title>{title} — 人生时间线</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body class="bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100 min-h-screen">
+    <header class="border-b border-gray-200 dark:border-gray-800 px-6 py-4">
+      <nav class="max-w-6xl mx-auto flex items-center gap-6">
+        <a href="/" class="font-bold text-lg hover:opacity-70 transition-opacity">人生时间线</a>
+        <a href="/timeline" class="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-gray-300 transition-colors">时间线</a>
+      </nav>
+    </header>
+    <main class="max-w-6xl mx-auto px-6 py-8">
+      <slot />
+    </main>
+  </body>
+</html>
