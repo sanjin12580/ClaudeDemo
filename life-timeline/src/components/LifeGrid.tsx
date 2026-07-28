@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import type { GridData, CellData } from '../lib/types';
+import { useI18n } from '../lib/i18n';
 
 // 贡献图颜色阶梯
 const INTENSITY_COLORS = [
-  'bg-gray-100 dark:bg-gray-800',        // 0 — 无事件
-  'bg-green-200 dark:bg-green-900',       // 1 — 轻微
-  'bg-green-400 dark:bg-green-700',       // 2 — 中等
-  'bg-green-500 dark:bg-green-600',       // 3 — 较多
-  'bg-green-700 dark:bg-green-400',       // 4 — 丰富
+  'bg-gray-100 dark:bg-gray-800',
+  'bg-green-200 dark:bg-green-900',
+  'bg-green-400 dark:bg-green-700',
+  'bg-green-500 dark:bg-green-600',
+  'bg-green-700 dark:bg-green-400',
 ];
 
 // 月份标签
@@ -20,12 +21,12 @@ interface Props {
   data: GridData;
 }
 
-/** 查找某年某周的格子 */
 function getCell(cells: CellData[], year: number, week: number): CellData | undefined {
   return cells.find((c) => c.year === year && c.week === week);
 }
 
 export default function LifeGrid({ data }: Props) {
+  const { lifeGrid: t } = useI18n();
   const [tooltip, setTooltip] = useState<{ cell: CellData; x: number; y: number } | null>(null);
 
   const years: number[] = [];
@@ -36,7 +37,6 @@ export default function LifeGrid({ data }: Props) {
   return (
     <div className="overflow-x-auto pb-4">
       <div className="flex gap-1" style={{ minWidth: 'fit-content' }}>
-        {/* 左侧：年份标签 */}
         <div className="flex flex-col gap-1 pt-5 pr-2 shrink-0">
           {years.map((year) => (
             <div
@@ -48,9 +48,7 @@ export default function LifeGrid({ data }: Props) {
           ))}
         </div>
 
-        {/* 右侧：格子区域 */}
         <div className="shrink-0">
-          {/* 月份行 */}
           <div className="flex gap-1 mb-1 pl-0" style={{ width: 52 * 15 }}>
             {MONTH_LABELS.map((month, i) => (
               <div
@@ -63,7 +61,6 @@ export default function LifeGrid({ data }: Props) {
             ))}
           </div>
 
-          {/* 格子区域 */}
           <div className="flex flex-col gap-1">
             {years.map((year) => (
               <div key={year} className="flex gap-[2px]">
@@ -77,11 +74,7 @@ export default function LifeGrid({ data }: Props) {
                       key={week}
                       className={`w-3 h-3 rounded-sm ${INTENSITY_COLORS[intensity]}
                         ${hasEvents ? 'cursor-pointer hover:ring-2 hover:ring-green-500 hover:scale-125 transition-transform' : ''}`}
-                      title={
-                        hasEvents
-                          ? `${year} 第${week + 1}周 — ${cell.events.map((e) => e.title).join(', ')}`
-                          : `${year} 第${week + 1}周`
-                      }
+                      title={t.tooltip(year, week + 1) + (hasEvents ? ` — ${cell.events.map((e) => e.title).join(', ')}` : '')}
                       onMouseEnter={(e) => {
                         if (hasEvents) {
                           const rect = (e.target as HTMLElement).getBoundingClientRect();
@@ -98,7 +91,6 @@ export default function LifeGrid({ data }: Props) {
         </div>
       </div>
 
-      {/* 悬停气泡 */}
       {tooltip && (
         <div
           className="fixed z-50 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900
@@ -106,7 +98,7 @@ export default function LifeGrid({ data }: Props) {
           style={{ left: tooltip.x, top: tooltip.y }}
         >
           <div className="font-semibold mb-1">
-            {tooltip.cell.year} 年第 {tooltip.cell.week} 周
+            {t.tooltip(tooltip.cell.year, tooltip.cell.week)}
           </div>
           {tooltip.cell.events.map((e) => (
             <div key={e.slug} className="opacity-80 leading-relaxed">
@@ -116,13 +108,12 @@ export default function LifeGrid({ data }: Props) {
         </div>
       )}
 
-      {/* 图例 */}
       <div className="flex items-center gap-2 mt-4 text-xs text-gray-400">
-        <span>清淡</span>
+        <span>{t.less}</span>
         {INTENSITY_COLORS.map((color, i) => (
           <div key={i} className={`w-3 h-3 rounded-sm ${color}`} />
         ))}
-        <span>丰富</span>
+        <span>{t.more}</span>
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import { adminApiPlugin } from './vite-plugin-admin-api';
 // https://astro.build/config
 export default defineConfig({
   integrations: [react()],
+  devToolbar: { enabled: false },
   vite: {
     plugins: [tailwindcss(), adminApiPlugin()],
   },
