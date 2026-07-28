@@ -145,7 +145,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
    * AI 对话 - 小米 MIMO
    */
   ipcMain.handle('ai-chat', async (_event, _provider: string, messages: { role: string; content: string }[], options?: { temperature?: number; maxTokens?: number }) => {
-    const apiKey = globalApiKey['mimo'] || ''
+    const apiKey = getGlobalApiKey()['mimo'] || ''
     if (!apiKey) throw new Error('未配置 MIMO API Key，请在设置中填写')
 
     const response = await fetch('https://api.xiaomimimo.com/v1/chat/completions', {
@@ -175,7 +175,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
    * 语音识别 (ASR) - 音频转文字
    */
   ipcMain.handle('ai-asr', async (_event, audioBase64: string) => {
-    const apiKey = globalApiKey['mimo'] || ''
+    const apiKey = getGlobalApiKey()['mimo'] || ''
     if (!apiKey) throw new Error('未配置 MIMO API Key')
 
     const response = await fetch('https://api.xiaomimimo.com/v1/chat/completions', {
@@ -219,7 +219,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
    * 返回 base64 编码的 PCM16 音频数据
    */
   ipcMain.handle('ai-tts', async (_event, text: string) => {
-    const apiKey = globalApiKey['mimo'] || ''
+    const apiKey = getGlobalApiKey()['mimo'] || ''
     if (!apiKey) throw new Error('未配置 MIMO API Key')
 
     const response = await fetch('https://api.xiaomimimo.com/v1/chat/completions', {
@@ -266,12 +266,12 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
    * 保存/读取 API Key
    */
   ipcMain.on('set-api-key', (_event, provider: string, key: string) => {
-    globalApiKey[provider] = key
-    saveConfig(globalApiKey)
+    getGlobalApiKey()[provider] = key
+    saveConfig(getGlobalApiKey())
   })
 
   ipcMain.handle('get-api-key', (_event, provider: string) => {
-    return globalApiKey[provider] || ''
+    return getGlobalApiKey()[provider] || ''
   })
 
   /**
@@ -298,12 +298,19 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   })
 }
 
-// 配置文件路径
-const configPath = join(app.getAppPath(), '..', '..', 'config.json')
+// 配置文件路径（延迟初始化，避免在 app.ready 之前调用 app.getAppPath）
+let _configPath: string | null = null
+function getConfigPath(): string {
+  if (!_configPath) {
+    _configPath = join(app.getAppPath(), '..', '..', 'config.json')
+  }
+  return _configPath
+}
 
 // 读取配置
 function loadConfig(): Record<string, string> {
   try {
+    const configPath = getConfigPath()
     if (existsSync(configPath)) {
       return JSON.parse(readFileSync(configPath, 'utf-8'))
     }
@@ -316,11 +323,17 @@ function loadConfig(): Record<string, string> {
 // 保存配置
 function saveConfig(config: Record<string, string>): void {
   try {
-    writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8')
+    writeFileSync(getConfigPath(), JSON.stringify(config, null, 2), 'utf-8')
   } catch (e) {
     console.error('Failed to save config:', e)
   }
 }
 
-// 全局 API Key（从配置文件加载）
-const globalApiKey: Record<string, string> = loadConfig()
+// 全局 API Key（延迟加载）
+let _globalApiKey: Record<string, string> | null = null
+function getGlobalApiKey(): Record<string, string> {
+  if (!_globalApiKey) {
+    _globalApiKey = loadConfig()
+  }
+  return _globalApiKey
+}

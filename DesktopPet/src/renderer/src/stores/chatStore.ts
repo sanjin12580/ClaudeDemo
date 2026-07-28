@@ -1,5 +1,5 @@
 /**
- * 对话状态管理
+ * 对话状态管理 — 使用 localStorage 手动持久化消息
  */
 
 import { create } from 'zustand'
@@ -12,13 +12,9 @@ export interface ChatMessage {
 }
 
 interface ChatState {
-  /** 对话历史 */
   messages: ChatMessage[]
-  /** 是否正在等待 AI 回复 */
   isWaiting: boolean
-  /** 对话面板是否打开 */
   isOpen: boolean
-  /** 错误信息 */
   error: string | null
 
   addMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => void
@@ -28,28 +24,42 @@ interface ChatState {
   clearMessages: () => void
 }
 
-let msgIdCounter = 0
+const STORAGE_KEY = 'desktoppet-chat'
 
-export const useChatStore = create<ChatState>((set) => ({
-  messages: [],
+function loadSaved(): ChatMessage[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) return JSON.parse(raw)
+  } catch {}
+  return []
+}
+
+function save(messages: ChatMessage[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-50)))
+  } catch {}
+}
+
+let msgIdCounter = Date.now()
+
+export const useChatStore = create<ChatState>()((set, get) => ({
+  messages: loadSaved(),
   isWaiting: false,
   isOpen: false,
   error: null,
 
-  addMessage: (msg) =>
+  addMessage: (msg) => {
     set((state) => ({
       messages: [
         ...state.messages,
-        {
-          ...msg,
-          id: `msg-${++msgIdCounter}`,
-          timestamp: Date.now(),
-        },
-      ].slice(-50), // 保留最近 50 条
-    })),
+        { ...msg, id: `msg-${++msgIdCounter}`, timestamp: Date.now() },
+      ].slice(-50),
+    }))
+    save(get().messages)
+  },
 
   setWaiting: (value) => set({ isWaiting: value }),
   setOpen: (value) => set({ isOpen: value }),
   setError: (error) => set({ error }),
-  clearMessages: () => set({ messages: [] }),
+  clearMessages: () => { set({ messages: [] }); save([]) },
 }))

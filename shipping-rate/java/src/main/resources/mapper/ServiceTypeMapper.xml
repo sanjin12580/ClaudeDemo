@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shipping.mapper.ServiceTypeMapper">
+
+    <select id="findAll" resultType="ServiceType">
+        SELECT id, code, name_cn AS nameCn, name_en AS nameEn, created_at AS createdAt
+        FROM ups_service_type
+    </select>
+
+    <select id="findByCode" resultType="ServiceType">
+        SELECT id, code, name_cn AS nameCn, name_en AS nameEn, created_at AS createdAt
+        FROM ups_service_type
+        WHERE code = #{code}
+    </select>
+
+</mapper>

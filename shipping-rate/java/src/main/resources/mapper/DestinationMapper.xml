@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shipping.mapper.DestinationMapper">
+
+    <select id="findAll" resultType="Destination">
+        SELECT id, name, sort_order AS sortOrder, created_at AS createdAt
+        FROM ups_destination
+        ORDER BY sort_order
+    </select>
+
+    <select id="findByName" resultType="Destination">
+        SELECT id, name, sort_order AS sortOrder, created_at AS createdAt
+        FROM ups_destination
+        WHERE name = #{name}
+    </select>
+
+</mapper>
