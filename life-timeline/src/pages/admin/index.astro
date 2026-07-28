@@ -1,21 +1,26 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import AdminForm from '../../components/AdminForm';
+import AdminPanel from '../../components/AdminPanel';
+import { loadEvents } from '../../lib/parseEvents';
 import { t } from '../../lib/i18n';
+
+// 加载所有事件（含草稿），传给管理面板
+const allEvents = await loadEvents(true);
 ---
 
 <Layout title={t.admin.heading} description={t.admin.description}>
-  <div class="space-y-8">
+  <div class="space-y-6">
     <div>
       <h1 class="text-3xl font-bold tracking-tight">{t.admin.heading}</h1>
       <p class="mt-2 text-gray-500 dark:text-gray-400">
-        {t.admin.description}{t.admin.fileSavedTo} <code class="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{t.admin.dir}</code> 目录。
+        {t.admin.description}{t.admin.fileSavedTo}
+        <code class="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{t.admin.dir}</code> 目录。
       </p>
       <div class="mt-3 px-3 py-2 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg text-sm text-amber-700 dark:text-amber-300">
         ⚠️ {t.admin.warning} (<code>{t.admin.devOnly}</code>) {t.admin.warningSuffix}
       </div>
     </div>
 
-    <AdminForm client:load />
+    <AdminPanel events={allEvents} client:load />
   </div>
 </Layout>

@@ -2,10 +2,11 @@ import type { EventMeta, CellData, GridData, YearGroup } from './types';
 import { getCollection } from 'astro:content';
 
 /**
- * 从 Astro Content Collection 加载所有事件（不含草稿）
+ * 从 Astro Content Collection 加载事件
+ * @param includeDrafts 是否包含草稿（默认 false）
  */
-export async function loadEvents(): Promise<EventMeta[]> {
-  const entries = await getCollection('events', ({ data }) => !data.draft);
+export async function loadEvents(includeDrafts = false): Promise<EventMeta[]> {
+  const entries = await getCollection('events', ({ data }) => includeDrafts || !data.draft);
 
   return entries
     .map((entry) => ({
