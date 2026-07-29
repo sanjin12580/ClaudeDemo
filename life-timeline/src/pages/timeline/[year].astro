@@ -3,6 +3,7 @@ import Layout from '../../layouts/Layout.astro';
 import EventCard from '../../components/EventCard';
 import { loadEvents } from '../../lib/parseEvents';
 import { t } from '../../lib/i18n';
+import { to } from '../../lib/base';
 
 export async function getStaticPaths() {
   const events = await loadEvents();
@@ -30,7 +31,7 @@ for (const event of yearEvents) {
   <div class="space-y-8">
     <div>
       <a
-        href="/timeline"
+        href={to('/timeline')}
         class="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
       >
         {t.yearPage.back}
