@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
-import type { EventMeta, Category, YearGroup } from '../lib/types';
+import type { EventMeta, YearGroup } from '../lib/types';
 import { useI18n } from '../lib/i18n';
 import EventCard from './EventCard';
+import SearchBar from './SearchBar';
 
 interface Props {
   events: EventMeta[];
@@ -13,6 +14,7 @@ export default function Timeline({ events }: Props) {
   const allCats: Array<string> = [catT.all, ...Object.keys(catT).filter(k => k !== 'all')];
   const [selectedCategory, setSelectedCategory] = useState<string>(catT.all);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // 收集所有标签
   const allTags = useMemo(() => {
@@ -21,9 +23,23 @@ export default function Timeline({ events }: Props) {
     return Array.from(tagSet).sort();
   }, [events]);
 
-  // 筛选事件
+  // 搜索过滤
+  const searchFiltered = useMemo(() => {
+    if (!searchQuery.trim()) return events;
+    const q = searchQuery.toLowerCase().trim();
+    return events.filter((event) => {
+      if (event.title.toLowerCase().includes(q)) return true;
+      if (event.category.includes(q)) return true;
+      if (event.tags.some((tag) => tag.toLowerCase().includes(q))) return true;
+      if (event.location?.toLowerCase().includes(q)) return true;
+      if (event.body.toLowerCase().includes(q)) return true;
+      return false;
+    });
+  }, [events, searchQuery]);
+
+  // 分类/标签筛选
   const filteredEvents = useMemo(() => {
-    let result = events;
+    let result = searchFiltered;
     if (selectedCategory !== catT.all) {
       result = result.filter((e) => e.category === selectedCategory);
     }
@@ -31,7 +47,7 @@ export default function Timeline({ events }: Props) {
       result = result.filter((e) => e.tags.includes(selectedTag));
     }
     return result;
-  }, [events, selectedCategory, selectedTag, catT.all]);
+  }, [searchFiltered, selectedCategory, selectedTag, catT.all]);
 
   // 按年分组
   const yearGroups: YearGroup[] = useMemo(() => {
@@ -48,6 +64,9 @@ export default function Timeline({ events }: Props) {
 
   return (
     <div className="space-y-8">
+      {/* 搜索框 */}
+      <SearchBar events={events} onQueryChange={setSearchQuery} />
+
       {/* 筛选器 */}
       <div className="flex flex-wrap gap-4 items-center">
         <div className="flex gap-1.5 flex-wrap">

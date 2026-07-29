@@ -39,7 +39,7 @@ const currentIndex = allEntries.findIndex((e) => e.id === entry.id);
 const prevEntry = currentIndex > 0 ? allEntries[currentIndex - 1] : null;
 const nextEntry = currentIndex < allEntries.length - 1 ? allEntries[currentIndex + 1] : null;
 
-function getSlug(e: typeof entry): string {
+function getSlug(e: NonNullable<typeof entry>): string {
   return e.id.replace(/\.(md|mdx)$/, '');
 }
 ---

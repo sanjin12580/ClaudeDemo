@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import type { EventMeta, Category } from '../lib/types';
 import { CATEGORY_COLORS } from '../lib/types';
 import { useI18n } from '../lib/i18n';
@@ -84,6 +84,77 @@ export default function AdminPanel({ events: initialEvents }: Props) {
   const [status, setStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<EventMeta | null>(null);
+
+  // 图片上传
+  const [uploading, setUploading] = useState(false);
+  const [uploadMsg, setUploadMsg] = useState('');
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // 处理文件上传
+  async function handleUpload(file: File) {
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadMsg(t.imageMaxSize);
+      return;
+    }
+    setUploading(true);
+    setUploadMsg(t.imageUploading);
+    try {
+      const reader = new FileReader();
+      const dataUrl = await new Promise<string>((resolve) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+
+      const resp = await fetch('/api/upload-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, data: dataUrl }),
+      });
+      const result = await resp.json();
+      if (resp.ok && result.success) {
+        // 插入到 textarea 光标处
+        const md = `![${file.name.replace(/\.[^.]+$/, '')}](${result.url})`;
+        const ta = textareaRef.current;
+        if (ta) {
+          const start = ta.selectionStart;
+          const end = ta.selectionEnd;
+          const before = form.content.slice(0, start);
+          const after = form.content.slice(end);
+          const newContent = before + (before && !before.endsWith('\n') ? '\n' : '') + md + '\n' + after;
+          update('content', newContent);
+          // 恢复光标位置
+          setTimeout(() => {
+            ta.focus();
+            ta.selectionStart = ta.selectionEnd = start + md.length + (before && !before.endsWith('\n') ? 1 : 0) + 1;
+          }, 0);
+        }
+        setUploadMsg('');
+        setUploading(false);
+      } else {
+        setUploadMsg(result.error || t.imageFailed);
+        setUploading(false);
+      }
+    } catch (err) {
+      setUploadMsg(t.imageFailed);
+      setUploading(false);
+    }
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      handleUpload(file);
+    }
+  }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) handleUpload(file);
+  }
 
   // 筛选事件列表
   const filteredEvents = useMemo(() => {
@@ -436,7 +507,40 @@ export default function AdminPanel({ events: initialEvents }: Props) {
               {/* 正文 */}
               <div>
                 <label className="block text-xs font-medium mb-1">{t.contentLabel}</label>
+
+                {/* 图片上传区域 */}
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`mb-2 border-2 border-dashed rounded-lg px-4 py-3 text-center cursor-pointer transition-colors
+                    ${dragOver
+                      ? 'border-green-400 bg-green-50 dark:bg-green-950'
+                      : 'border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500'
+                    }
+                    ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                >
+                  {uploading ? (
+                    <span className="text-xs text-gray-500">{uploadMsg}</span>
+                  ) : uploadMsg ? (
+                    <span className="text-xs text-red-500">{uploadMsg}</span>
+                  ) : (
+                    <span className="text-xs text-gray-400">
+                      {t.imageUpload} — {t.imageDrop}
+                    </span>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/gif,image/webp"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                </div>
+
                 <textarea
+                  ref={textareaRef}
                   value={form.content}
                   onChange={(e) => update('content', e.target.value)}
                   rows={10}

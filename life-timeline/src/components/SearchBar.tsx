@@ -1,0 +1,217 @@
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import type { EventMeta } from '../lib/types';
+import { CATEGORY_COLORS } from '../lib/types';
+import { useI18n } from '../lib/i18n';
+
+interface Props {
+  events: EventMeta[];
+  onQueryChange?: (query: string) => void;
+}
+
+function formatDate(dateStr: string): string {
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    return `${parts[0]}年${parseInt(parts[1])}月${parseInt(parts[2])}日`;
+  }
+  if (parts.length === 2) {
+    return `${parts[0]}年${parseInt(parts[1])}月`;
+  }
+  return `${parts[0]}年`;
+}
+
+export default function SearchBar({ events, onQueryChange }: Props) {
+  const { search: t } = useI18n();
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+
+  // 搜索过滤
+  const results = useMemo(() => {
+    if (!query.trim()) return [];
+    const q = query.toLowerCase().trim();
+    const scored = events
+      .map((event) => {
+        let score = 0;
+        // 标题匹配权重最高
+        if (event.title.toLowerCase().includes(q)) score += 10;
+        if (event.title.toLowerCase() === q) score += 20;
+        // 分类匹配
+        if (event.category.includes(q)) score += 5;
+        // 标签匹配
+        const matchedTags = event.tags.filter((tag) => tag.toLowerCase().includes(q));
+        if (matchedTags.length > 0) score += matchedTags.length * 3;
+        // 地点匹配
+        if (event.location?.toLowerCase().includes(q)) score += 3;
+        // 正文匹配
+        const bodyLower = event.body.toLowerCase();
+        if (bodyLower.includes(q)) score += 1;
+        // 计算正文中出现的次数
+        const bodyMatches = (bodyLower.match(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
+        score += bodyMatches * 0.5;
+        return { event, score };
+      })
+      .filter((r) => r.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+    return scored.map((r) => r.event);
+  }, [query, events]);
+
+  // 关闭下拉
+  const close = useCallback(() => {
+    setOpen(false);
+    setActiveIndex(-1);
+  }, []);
+
+  // 点击外部关闭
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        close();
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [close]);
+
+  // 键盘导航
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (!open && query.trim() && (e.key === 'ArrowDown' || e.key === 'Enter')) {
+      setOpen(true);
+      return;
+    }
+    if (e.key === 'Escape') {
+      close();
+      inputRef.current?.blur();
+      return;
+    }
+    if (!open || results.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev < results.length - 1 ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev > 0 ? prev - 1 : results.length - 1));
+    } else if (e.key === 'Enter' && activeIndex >= 0) {
+      e.preventDefault();
+      window.location.href = `/events/${results[activeIndex].slug}`;
+    }
+  }
+
+  // 滚动到激活项
+  useEffect(() => {
+    if (activeIndex >= 0 && listRef.current) {
+      const item = listRef.current.children[activeIndex] as HTMLLIElement | undefined;
+      item?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [activeIndex]);
+
+  // 高亮匹配文本
+  function highlight(text: string): React.ReactNode {
+    if (!query.trim()) return text;
+    const q = query.trim();
+    const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escaped})`, 'gi');
+    const parts = text.split(regex);
+    return parts.map((part, i) =>
+      regex.test(part) ? <mark key={i} className="bg-yellow-200 dark:bg-yellow-800 text-inherit rounded-sm">{part}</mark> : part,
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="relative w-full max-w-xl">
+      {/* 搜索输入 */}
+      <div className="relative">
+        <svg
+          className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => {
+            const v = e.target.value;
+            setQuery(v);
+            setOpen(true);
+            setActiveIndex(-1);
+            onQueryChange?.(v);
+          }}
+          onFocus={() => { if (query.trim()) setOpen(true); }}
+          onKeyDown={handleKeyDown}
+          placeholder={t.placeholder}
+          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700
+                     bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100
+                     focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent
+                     placeholder-gray-400 dark:placeholder-gray-500 text-sm transition-shadow"
+        />
+        {query && (
+          <button
+            onClick={() => { setQuery(''); close(); onQueryChange?.(''); inputRef.current?.focus(); }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            aria-label={t.clear}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      {/* 搜索结果下拉 */}
+      {open && results.length > 0 && (
+        <div className="absolute top-full mt-2 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700
+                        rounded-xl shadow-lg overflow-hidden z-50">
+          <div className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-gray-800">
+            {t.results(results.length)}
+          </div>
+          <ul ref={listRef} className="max-h-80 overflow-y-auto py-1">
+            {results.map((event, i) => {
+              const catColor = CATEGORY_COLORS[event.category] || CATEGORY_COLORS['其他'];
+              return (
+                <li key={event.slug}>
+                  <a
+                    href={`/events/${event.slug}`}
+                    className={`flex items-start gap-3 px-3 py-2.5 transition-colors cursor-pointer
+                      ${i === activeIndex
+                        ? 'bg-green-50 dark:bg-green-950'
+                        : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                      }`}
+                    onMouseEnter={() => setActiveIndex(i)}
+                  >
+                    <span className={`shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full mt-0.5 ${catColor}`}>
+                      {event.category}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium truncate">{highlight(event.title)}</div>
+                      <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                        {formatDate(event.date)}
+                        {event.location && ` · ${event.location}`}
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-gray-300 dark:text-gray-600 shrink-0 mt-1">↗</span>
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {/* 无结果 */}
+      {open && query.trim() && results.length === 0 && (
+        <div className="absolute top-full mt-2 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700
+                        rounded-xl shadow-lg overflow-hidden z-50">
+          <div className="px-4 py-6 text-center text-sm text-gray-400 dark:text-gray-500">
+            {t.noResults}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
