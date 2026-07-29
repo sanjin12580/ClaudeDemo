@@ -2,10 +2,14 @@
 import Layout from '../../layouts/Layout.astro';
 import AdminPanel from '../../components/AdminPanel';
 import { loadEvents } from '../../lib/parseEvents';
+import { loadPosts } from '../../lib/parsePosts';
+import { loadProfile } from '../../lib/parseProfile';
 import { t } from '../../lib/i18n';
 
-// 加载所有事件（含草稿），传给管理面板
+// 加载所有事件和文章（含草稿）及档案
 const allEvents = await loadEvents(true);
+const allPosts = await loadPosts(true);
+const profile = await loadProfile();
 ---
 
 <Layout title={t.admin.heading} description={t.admin.description}>
@@ -14,13 +18,15 @@ const allEvents = await loadEvents(true);
       <h1 class="text-3xl font-bold tracking-tight">{t.admin.heading}</h1>
       <p class="mt-2 text-gray-500 dark:text-gray-400">
         {t.admin.description}{t.admin.fileSavedTo}
-        <code class="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{t.admin.dir}</code> 目录。
+        <code class="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{t.admin.dir}</code> {t.admin.and}
+        <code class="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{t.admin.blogDir}</code> {t.admin.and}
+        <code class="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{t.admin.profileDir}</code> 目录。
       </p>
       <div class="mt-3 px-3 py-2 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg text-sm text-amber-700 dark:text-amber-300">
         ⚠️ {t.admin.warning} (<code>{t.admin.devOnly}</code>) {t.admin.warningSuffix}
       </div>
     </div>
 
-    <AdminPanel events={allEvents} client:load />
+    <AdminPanel events={allEvents} posts={allPosts} profile={profile} client:load />
   </div>
 </Layout>

@@ -1,9 +1,11 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
-import type { EventMeta, Category } from '../lib/types';
+import type { EventMeta, PostMeta, Profile, Category } from '../lib/types';
 import { CATEGORY_COLORS } from '../lib/types';
 import { useI18n } from '../lib/i18n';
 
 const CATEGORIES: Category[] = ['教育', '工作', '旅行', '健康', '关系', '项目', '其他'];
+
+type AdminMode = 'events' | 'posts' | 'profile';
 
 interface FormData {
   date: string;
@@ -29,6 +31,8 @@ const EMPTY_FORM: FormData = {
 
 interface Props {
   events: EventMeta[];
+  posts: PostMeta[];
+  profile: Profile | null;
 }
 
 // ============================================================
@@ -37,28 +41,18 @@ interface Props {
 function renderMarkdown(text: string): string {
   if (!text) return '<p class="text-gray-400 italic">（空内容）</p>';
   let html = text
-    // 转义 HTML
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    // 标题
     .replace(/^### (.+)$/gm, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>')
     .replace(/^## (.+)$/gm, '<h2 class="text-xl font-semibold mt-5 mb-2">$1</h2>')
     .replace(/^# (.+)$/gm, '<h1 class="text-2xl font-bold mt-6 mb-3">$1</h1>')
-    // 粗体/斜体
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    // 链接
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="text-green-600 dark:text-green-400 underline">$1</a>')
-    // 图片
     .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="rounded-lg max-w-full my-2" />')
-    // 行内代码
     .replace(/`([^`]+)`/g, '<code class="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">$1</code>')
-    // 引用
     .replace(/^> (.+)$/gm, '<blockquote class="border-l-2 border-green-400 pl-3 italic text-gray-500 dark:text-gray-400 my-2">$1</blockquote>')
-    // 无序列表
     .replace(/^- (.+)$/gm, '<li class="ml-4 list-disc">$1</li>')
-    // 水平线
     .replace(/^---$/gm, '<hr class="my-4 border-gray-200 dark:border-gray-700" />')
-    // 段落（连续空行分隔）
     .replace(/\n\n+/g, '</p><p class="mb-2 leading-relaxed">');
 
   return `<p class="mb-2 leading-relaxed">${html}</p>`;
@@ -67,11 +61,27 @@ function renderMarkdown(text: string): string {
 // ============================================================
 // 主组件
 // ============================================================
-export default function AdminPanel({ events: initialEvents }: Props) {
+export default function AdminPanel({ events: initialEvents, posts: initialPosts, profile: initialProfile }: Props) {
   const { admin: t } = useI18n();
+
+  // 模式切换
+  const [mode, setMode] = useState<AdminMode>('events');
 
   // 事件列表
   const [events, setEvents] = useState<EventMeta[]>(initialEvents);
+  // 文章列表
+  const [posts, setPosts] = useState<PostMeta[]>(initialPosts);
+
+  // 档案表单
+  const [profileForm, setProfileForm] = useState({
+    name: initialProfile?.name ?? '',
+    tagline: initialProfile?.tagline ?? '',
+    avatar: initialProfile?.avatar ?? '',
+    birthDate: initialProfile?.birthDate ?? '',
+    skills: initialProfile?.skills?.join(', ') ?? '',
+    shortGoal: initialProfile?.shortGoal ?? '',
+    longGoal: initialProfile?.longGoal ?? '',
+  });
 
   // 列表筛选
   const [filterCategory, setFilterCategory] = useState<string>('全部');
@@ -83,7 +93,7 @@ export default function AdminPanel({ events: initialEvents }: Props) {
   const [editTab, setEditTab] = useState<'edit' | 'preview'>('edit');
   const [status, setStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
-  const [deleteTarget, setDeleteTarget] = useState<EventMeta | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<EventMeta | PostMeta | null>(null);
 
   // 图片上传
   const [uploading, setUploading] = useState(false);
@@ -92,7 +102,7 @@ export default function AdminPanel({ events: initialEvents }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // 处理文件上传
+  // ========== 图片上传 ==========
   async function handleUpload(file: File) {
     if (file.size > 10 * 1024 * 1024) {
       setUploadMsg(t.imageMaxSize);
@@ -114,7 +124,6 @@ export default function AdminPanel({ events: initialEvents }: Props) {
       });
       const result = await resp.json();
       if (resp.ok && result.success) {
-        // 插入到 textarea 光标处
         const md = `![${file.name.replace(/\.[^.]+$/, '')}](${result.url})`;
         const ta = textareaRef.current;
         if (ta) {
@@ -124,7 +133,6 @@ export default function AdminPanel({ events: initialEvents }: Props) {
           const after = form.content.slice(end);
           const newContent = before + (before && !before.endsWith('\n') ? '\n' : '') + md + '\n' + after;
           update('content', newContent);
-          // 恢复光标位置
           setTimeout(() => {
             ta.focus();
             ta.selectionStart = ta.selectionEnd = start + md.length + (before && !before.endsWith('\n') ? 1 : 0) + 1;
@@ -156,7 +164,7 @@ export default function AdminPanel({ events: initialEvents }: Props) {
     if (file) handleUpload(file);
   }
 
-  // 筛选事件列表
+  // ========== 筛选逻辑 ==========
   const filteredEvents = useMemo(() => {
     let result = events;
     if (filterCategory !== '全部') {
@@ -171,7 +179,21 @@ export default function AdminPanel({ events: initialEvents }: Props) {
     return result;
   }, [events, filterCategory, searchQuery]);
 
-  // 选中事件 → 加载到表单
+  const filteredPosts = useMemo(() => {
+    let result = posts;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((p) =>
+        p.title.toLowerCase().includes(q) || p.body.toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [posts, searchQuery]);
+
+  // ========== 选中项计数 ==========
+  const filteredCount = mode === 'events' ? filteredEvents.length : filteredPosts.length;
+
+  // ========== 加载到表单 ==========
   const selectEvent = useCallback((event: EventMeta) => {
     setSelectedSlug(event.slug);
     setForm({
@@ -189,21 +211,52 @@ export default function AdminPanel({ events: initialEvents }: Props) {
     setMessage('');
   }, []);
 
-  // 新建事件
-  const newEvent = useCallback(() => {
-    setSelectedSlug(null);
-    setForm(EMPTY_FORM);
+  const selectPost = useCallback((post: PostMeta) => {
+    setSelectedSlug(post.slug);
+    setForm({
+      date: post.date,
+      title: post.title,
+      category: '其他',
+      tags: post.tags.join(', '),
+      importance: 3,
+      location: '',
+      content: post.body.trim(),
+      draft: post.draft,
+    });
     setEditTab('edit');
     setStatus('idle');
     setMessage('');
   }, []);
 
-  // 表单字段更新
+  // ========== 新建 ==========
+  const newItem = useCallback(() => {
+    setSelectedSlug(null);
+    setForm(EMPTY_FORM);
+    setEditTab('edit');
+    setStatus('idle');
+    setMessage('');
+    setSearchQuery('');
+    setFilterCategory('全部');
+  }, []);
+
+  // ========== 切换模式时重置 ==========
+  function switchMode(newMode: AdminMode) {
+    setMode(newMode);
+    setSelectedSlug(null);
+    setForm(EMPTY_FORM);
+    setEditTab('edit');
+    setStatus('idle');
+    setMessage('');
+    setSearchQuery('');
+    setFilterCategory('全部');
+  }
+
+  // ========== 表单更新 ==========
   function update(field: keyof FormData, value: string | number | boolean) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  // 提交
+  // ========== 提交 ==========
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.date || !form.title) {
@@ -214,25 +267,35 @@ export default function AdminPanel({ events: initialEvents }: Props) {
     setStatus('saving');
     setMessage('');
     try {
-      const resp = await fetch('/api/write-event', {
+      const apiPath = mode === 'events' ? '/api/write-event' : '/api/write-post';
+      const body = mode === 'events'
+        ? JSON.stringify({
+            date: form.date,
+            title: form.title,
+            category: form.category,
+            tags: form.tags.split(/[,，]/).map((tg) => tg.trim()).filter(Boolean),
+            importance: form.importance,
+            location: form.location || undefined,
+            content: form.content,
+            draft: form.draft,
+          })
+        : JSON.stringify({
+            date: form.date,
+            title: form.title,
+            tags: form.tags.split(/[,，]/).map((tg) => tg.trim()).filter(Boolean),
+            content: form.content,
+            draft: form.draft,
+          });
+
+      const resp = await fetch(apiPath, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          date: form.date,
-          title: form.title,
-          category: form.category,
-          tags: form.tags.split(/[,，]/).map((tg) => tg.trim()).filter(Boolean),
-          importance: form.importance,
-          location: form.location || undefined,
-          content: form.content,
-          draft: form.draft,
-        }),
+        body,
       });
       const data = await resp.json();
       if (resp.ok && data.success) {
         setStatus('success');
         setMessage(t.saved(data.path));
-        // 刷新列表：重新加载页面获取最新数据
         setTimeout(() => window.location.reload(), 800);
       } else {
         setStatus('error');
@@ -244,19 +307,67 @@ export default function AdminPanel({ events: initialEvents }: Props) {
     }
   }
 
-  // 删除
-  async function confirmDelete() {
-    if (!deleteTarget) return;
+  // ========== 档案提交 ==========
+  async function handleProfileSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!profileForm.name || !profileForm.birthDate) {
+      setStatus('error');
+      setMessage(t.validationError);
+      return;
+    }
+    setStatus('saving');
+    setMessage('');
     try {
-      const resp = await fetch('/api/delete-event', {
-        method: 'DELETE',
+      const resp = await fetch('/api/write-profile', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filePath: `src/content/events/${deleteTarget.date.slice(0, 4)}/${deleteTarget.slug}.md` }),
+        body: JSON.stringify({
+          name: profileForm.name,
+          tagline: profileForm.tagline,
+          avatar: profileForm.avatar,
+          birthDate: profileForm.birthDate,
+          skills: profileForm.skills.split(/[,，]/).map((s) => s.trim()).filter(Boolean),
+          shortGoal: profileForm.shortGoal,
+          longGoal: profileForm.longGoal,
+        }),
       });
       const data = await resp.json();
       if (resp.ok && data.success) {
-        setEvents((prev) => prev.filter((e) => e.slug !== deleteTarget.slug));
-        if (selectedSlug === deleteTarget.slug) newEvent();
+        setStatus('success');
+        setMessage(t.saved(data.path));
+        setTimeout(() => window.location.reload(), 800);
+      } else {
+        setStatus('error');
+        setMessage(data.error || t.saveFailed);
+      }
+    } catch (err) {
+      setStatus('error');
+      setMessage(t.networkError(err instanceof Error ? err.message : t.unknownError));
+    }
+  }
+
+  // ========== 删除 ==========
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    try {
+      const apiPath = mode === 'events' ? '/api/delete-event' : '/api/delete-post';
+      const filePath = mode === 'events'
+        ? `src/content/events/${deleteTarget.date.slice(0, 4)}/${deleteTarget.slug}.md`
+        : `src/content/blog/${deleteTarget.slug}.md`;
+
+      const resp = await fetch(apiPath, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filePath }),
+      });
+      const data = await resp.json();
+      if (resp.ok && data.success) {
+        if (mode === 'events') {
+          setEvents((prev) => prev.filter((e) => e.slug !== deleteTarget.slug));
+        } else {
+          setPosts((prev) => prev.filter((p) => p.slug !== deleteTarget.slug));
+        }
+        if (selectedSlug === deleteTarget.slug) newItem();
         setMessage(t.deleted);
         setStatus('success');
       } else {
@@ -272,13 +383,48 @@ export default function AdminPanel({ events: initialEvents }: Props) {
 
   return (
     <div className="flex gap-0 min-h-[600px] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden bg-white dark:bg-gray-900">
-      {/* ========== 左侧：事件列表 ========== */}
+      {/* ========== 左侧：列表 ========== */}
       <aside className="w-80 shrink-0 border-r border-gray-200 dark:border-gray-800 flex flex-col bg-gray-50/50 dark:bg-gray-950/50">
-        {/* 列表头部 */}
+        {/* Tab 切换 */}
+        <div className="flex border-b border-gray-200 dark:border-gray-800">
+          <button
+            onClick={() => switchMode('events')}
+            className={`flex-1 text-sm px-4 py-3 transition-colors font-medium
+              ${mode === 'events'
+                ? 'text-green-600 dark:text-green-400 border-b-2 border-green-500 bg-white dark:bg-gray-900'
+                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 border-b-2 border-transparent'
+              }`}
+          >
+            {t.tabEvents}
+          </button>
+          <button
+            onClick={() => switchMode('posts')}
+            className={`flex-1 text-sm px-4 py-3 transition-colors font-medium
+              ${mode === 'posts'
+                ? 'text-green-600 dark:text-green-400 border-b-2 border-green-500 bg-white dark:bg-gray-900'
+                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 border-b-2 border-transparent'
+              }`}
+          >
+            {t.tabPosts}
+          </button>
+          <button
+            onClick={() => switchMode('profile')}
+            className={`flex-1 text-sm px-4 py-3 transition-colors font-medium
+              ${mode === 'profile'
+                ? 'text-green-600 dark:text-green-400 border-b-2 border-green-500 bg-white dark:bg-gray-900'
+                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 border-b-2 border-transparent'
+              }`}
+          >
+            {t.tabProfile}
+          </button>
+        </div>
+
+        {/* 列表头部 — 仅在事件/文章模式下显示 */}
+        {mode !== 'profile' && (<>
         <div className="p-4 border-b border-gray-200 dark:border-gray-800 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-sm">{t.eventList}</h2>
-            <span className="text-xs text-gray-400">{filteredEvents.length}</span>
+            <h2 className="font-semibold text-sm">{mode === 'events' ? t.eventList : t.postList}</h2>
+            <span className="text-xs text-gray-400">{filteredCount}</span>
           </div>
 
           {/* 搜索 */}
@@ -291,38 +437,41 @@ export default function AdminPanel({ events: initialEvents }: Props) {
                        px-3 py-1.5 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
           />
 
-          {/* 分类筛选 */}
-          <div className="flex gap-1 flex-wrap">
-            {['全部', ...CATEGORIES].map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setFilterCategory(cat)}
-                className={`text-[11px] px-2 py-0.5 rounded-full transition-colors
-                  ${filterCategory === cat
-                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                    : 'bg-gray-200/50 dark:bg-gray-800 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
+          {/* 分类筛选（仅事件模式） */}
+          {mode === 'events' && (
+            <div className="flex gap-1 flex-wrap">
+              {['全部', ...CATEGORIES].map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setFilterCategory(cat)}
+                  className={`text-[11px] px-2 py-0.5 rounded-full transition-colors
+                    ${filterCategory === cat
+                      ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                      : 'bg-gray-200/50 dark:bg-gray-800 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* 新建按钮 */}
           <button
-            onClick={newEvent}
+            onClick={newItem}
             className="w-full text-xs px-3 py-2 rounded-lg bg-green-600 text-white font-medium
                        hover:bg-green-700 transition-colors"
           >
-            {t.newEvent}
+            {mode === 'events' ? t.newEvent : t.newPost}
           </button>
         </div>
 
-        {/* 事件列表 */}
+        {/* 列表内容 */}
         <div className="flex-1 overflow-y-auto">
-          {filteredEvents.length === 0 ? (
+          {filteredCount === 0 ? (
             <div className="text-center py-12 text-xs text-gray-400">{t.emptyList}</div>
-          ) : (
+          ) : mode === 'events' ? (
+            /* ======== 事件列表 ======== */
             <div className="divide-y divide-gray-100 dark:divide-gray-800">
               {filteredEvents.map((event) => {
                 const catColor = CATEGORY_COLORS[event.category] || CATEGORY_COLORS['其他'];
@@ -352,14 +501,45 @@ export default function AdminPanel({ events: initialEvents }: Props) {
                 );
               })}
             </div>
+          ) : (
+            /* ======== 文章列表 ======== */
+            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+              {filteredPosts.map((post) => (
+                <div
+                  key={post.slug}
+                  onClick={() => selectPost(post)}
+                  className={`p-3 cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-800
+                    ${selectedSlug === post.slug ? 'bg-green-50 dark:bg-green-950 border-l-2 border-green-500' : 'border-l-2 border-transparent'}`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    {post.draft && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300">
+                        {t.draftBadge}
+                      </span>
+                    )}
+                    {post.tags.length > 0 && (
+                      <span className="text-[10px] text-gray-400">
+                        {post.tags.slice(0, 2).map(tg => `#${tg}`).join(' ')}
+                        {post.tags.length > 2 && ' …'}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm font-medium truncate">{post.title}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[11px] text-gray-400 font-mono">{post.date}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
+        </>)}
       </aside>
 
       {/* ========== 右侧：编辑面板 ========== */}
       <main className="flex-1 flex flex-col min-w-0">
         {/* Tab 切换 */}
-        {selectedSlug || !initialEvents.some((e) => e.slug === selectedSlug) ? (
+        {selectedSlug || (mode === 'events' ? !initialEvents.some((e) => e.slug === selectedSlug) : !initialPosts.some((p) => p.slug === selectedSlug)) ? (
           <div className="flex items-center border-b border-gray-200 dark:border-gray-800 px-4">
             <button
               onClick={() => setEditTab('edit')}
@@ -386,8 +566,13 @@ export default function AdminPanel({ events: initialEvents }: Props) {
             {selectedSlug && (
               <button
                 onClick={() => {
-                  const ev = events.find((e) => e.slug === selectedSlug);
-                  if (ev) setDeleteTarget(ev);
+                  if (mode === 'events') {
+                    const ev = events.find((e) => e.slug === selectedSlug);
+                    if (ev) setDeleteTarget(ev);
+                  } else {
+                    const p = posts.find((p) => p.slug === selectedSlug);
+                    if (p) setDeleteTarget(p);
+                  }
                 }}
                 className="ml-auto text-xs text-red-400 hover:text-red-600 transition-colors px-2 py-1"
               >
@@ -399,7 +584,101 @@ export default function AdminPanel({ events: initialEvents }: Props) {
 
         {/* 内容区 */}
         <div className="flex-1 overflow-y-auto p-6">
-          {!selectedSlug && !form.title ? (
+          {mode === 'profile' ? (
+            /* ======== 档案编辑表单 ======== */
+            <form onSubmit={handleProfileSubmit} className="space-y-4 max-w-xl">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium mb-1">{t.profileName}</label>
+                  <input
+                    type="text"
+                    value={profileForm.name}
+                    onChange={(e) => setProfileForm((p) => ({ ...p, name: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">{t.profileTagline}</label>
+                  <input
+                    type="text"
+                    value={profileForm.tagline}
+                    onChange={(e) => setProfileForm((p) => ({ ...p, tagline: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium mb-1">{t.profileAvatar}</label>
+                  <input
+                    type="text"
+                    value={profileForm.avatar}
+                    onChange={(e) => setProfileForm((p) => ({ ...p, avatar: e.target.value }))}
+                    placeholder="/images/avatar.jpg"
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">{t.profileBirthDate}</label>
+                  <input
+                    type="date"
+                    value={profileForm.birthDate}
+                    onChange={(e) => setProfileForm((p) => ({ ...p, birthDate: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium mb-1">{t.profileSkills}</label>
+                <input
+                  type="text"
+                  value={profileForm.skills}
+                  onChange={(e) => setProfileForm((p) => ({ ...p, skills: e.target.value }))}
+                  placeholder={t.tagsPlaceholder}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium mb-1">{t.profileShortGoal}</label>
+                <input
+                  type="text"
+                  value={profileForm.shortGoal}
+                  onChange={(e) => setProfileForm((p) => ({ ...p, shortGoal: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium mb-1">{t.profileLongGoal}</label>
+                <input
+                  type="text"
+                  value={profileForm.longGoal}
+                  onChange={(e) => setProfileForm((p) => ({ ...p, longGoal: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                />
+              </div>
+
+              {/* 提交 */}
+              <div className="flex items-center gap-3 pt-4">
+                <button
+                  type="submit"
+                  disabled={status === 'saving'}
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {status === 'saving' ? t.savingBtn : t.profileSave}
+                </button>
+
+                {message && (
+                  <span className={`text-xs ${status === 'success' ? 'text-green-600' : 'text-red-500'}`}>
+                    {message}
+                  </span>
+                )}
+              </div>
+            </form>
+          ) : !selectedSlug && !form.title ? (
             /* 空状态 */
             <div className="flex items-center justify-center h-full text-gray-400 text-sm">
               {t.noSelection}
@@ -434,53 +713,57 @@ export default function AdminPanel({ events: initialEvents }: Props) {
 
               <p className="text-[11px] text-gray-400 -mt-2">{t.dateHint}</p>
 
-              {/* 分类 & 重要性 同行 */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium mb-1">{t.categoryLabel}</label>
-                  <div className="flex gap-1 flex-wrap">
-                    {CATEGORIES.map((cat) => (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => update('category', cat)}
-                        className={`text-[11px] px-2 py-1 rounded-full transition-colors border
-                          ${form.category === cat
-                            ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
-                            : 'border-gray-300 dark:border-gray-700 text-gray-500 hover:border-gray-400'
-                          }`}
-                      >
-                        {cat}
-                      </button>
-                    ))}
+              {/* 分类 & 重要性 同行（仅事件模式） */}
+              {mode === 'events' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium mb-1">{t.categoryLabel}</label>
+                    <div className="flex gap-1 flex-wrap">
+                      {CATEGORIES.map((cat) => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => update('category', cat)}
+                          className={`text-[11px] px-2 py-1 rounded-full transition-colors border
+                            ${form.category === cat
+                              ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
+                              : 'border-gray-300 dark:border-gray-700 text-gray-500 hover:border-gray-400'
+                            }`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1">{t.importanceLabel}: {form.importance}/5</label>
+                    <input
+                      type="range" min="1" max="5" value={form.importance}
+                      onChange={(e) => update('importance', parseInt(e.target.value, 10))}
+                      className="w-full accent-green-500"
+                    />
+                    <div className="flex justify-between text-[10px] text-gray-400">
+                      <span>{t.importanceMin}</span>
+                      <span>{t.importanceMax}</span>
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium mb-1">{t.importanceLabel}: {form.importance}/5</label>
-                  <input
-                    type="range" min="1" max="5" value={form.importance}
-                    onChange={(e) => update('importance', parseInt(e.target.value, 10))}
-                    className="w-full accent-green-500"
-                  />
-                  <div className="flex justify-between text-[10px] text-gray-400">
-                    <span>{t.importanceMin}</span>
-                    <span>{t.importanceMax}</span>
-                  </div>
-                </div>
-              </div>
+              )}
 
-              {/* 地点 & 标签 同行 */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium mb-1">{t.locationLabel}</label>
-                  <input
-                    type="text" value={form.location}
-                    onChange={(e) => update('location', e.target.value)}
-                    placeholder={t.locationPlaceholder}
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900
-                               px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
-                  />
-                </div>
+              {/* 地点 & 标签 同行（仅事件模式显示地点） */}
+              <div className={`grid ${mode === 'events' ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                {mode === 'events' && (
+                  <div>
+                    <label className="block text-xs font-medium mb-1">{t.locationLabel}</label>
+                    <input
+                      type="text" value={form.location}
+                      onChange={(e) => update('location', e.target.value)}
+                      placeholder={t.locationPlaceholder}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900
+                                 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                    />
+                  </div>
+                )}
                 <div>
                   <label className="block text-xs font-medium mb-1">{t.tagsLabel}</label>
                   <input
@@ -572,13 +855,19 @@ export default function AdminPanel({ events: initialEvents }: Props) {
           ) : (
             /* ======== 预览 ======== */
             <div className="max-w-xl">
-              {/* 事件元信息预览 */}
+              {/* 元信息预览 */}
               <div className="mb-6 p-4 rounded-xl bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800">
                 <div className="flex items-center gap-3 mb-2 flex-wrap">
-                  <span className="text-xs bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded-full">{form.category}</span>
+                  {mode === 'events' ? (
+                    <span className="text-xs bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded-full">{form.category}</span>
+                  ) : (
+                    <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 px-2 py-0.5 rounded-full">{t.articleBadge}</span>
+                  )}
                   <span className="text-sm text-gray-500 font-mono">{form.date}</span>
-                  {form.location && <span className="text-sm text-gray-400">📍 {form.location}</span>}
-                  <span className="text-yellow-500 text-sm">{'★'.repeat(form.importance)}{'☆'.repeat(5 - form.importance)}</span>
+                  {mode === 'events' && form.location && <span className="text-sm text-gray-400">📍 {form.location}</span>}
+                  {mode === 'events' && (
+                    <span className="text-yellow-500 text-sm">{'★'.repeat(form.importance)}{'☆'.repeat(5 - form.importance)}</span>
+                  )}
                   {form.draft && (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300">
                       {t.draftBadge}
@@ -609,7 +898,7 @@ export default function AdminPanel({ events: initialEvents }: Props) {
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setDeleteTarget(null)}>
           <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-xl max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold mb-2">确认删除</h3>
+            <h3 className="text-lg font-semibold mb-2">{t.deleteTitle}</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               {t.deleteConfirm.replace('{title}', deleteTarget.title)}
             </p>
@@ -618,13 +907,13 @@ export default function AdminPanel({ events: initialEvents }: Props) {
                 onClick={() => setDeleteTarget(null)}
                 className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               >
-                取消
+                {t.cancelBtn}
               </button>
               <button
                 onClick={confirmDelete}
                 className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
               >
-                删除
+                {t.deleteBtn}
               </button>
             </div>
           </div>

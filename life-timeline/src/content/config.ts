@@ -20,6 +20,36 @@ const eventsCollection = defineCollection({
   }),
 });
 
+// 博客文章集合的 schema
+const blogCollection = defineCollection({
+  type: 'content',
+  schema: z.object({
+    date: z.string().regex(
+      /^\d{4}-\d{2}-\d{2}$/,
+      '日期格式必须为 YYYY-MM-DD'
+    ),
+    title: z.string().min(1, '标题不能为空'),
+    tags: z.array(z.string()).default([]),
+    draft: z.boolean().default(false),
+  }),
+});
+
+// 个人档案集合的 schema（单文件）
+const profileCollection = defineCollection({
+  type: 'content',
+  schema: z.object({
+    name: z.string().min(1, '姓名不能为空'),
+    tagline: z.string().default(''),
+    avatar: z.string().optional(),
+    birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式必须为 YYYY-MM-DD'),
+    skills: z.array(z.string()).default([]),
+    shortGoal: z.string().default(''),
+    longGoal: z.string().default(''),
+  }),
+});
+
 export const collections = {
   events: eventsCollection,
+  blog: blogCollection,
+  profile: profileCollection,
 };

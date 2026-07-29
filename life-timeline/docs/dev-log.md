@@ -116,14 +116,34 @@ life-timeline/
 
 ### 后续子系统（远期）
 - [ ] 生活数据追踪（健康/财务/阅读/习惯）
-- [ ] 思想花园（博客/随笔/笔记）
-- [ ] 关系图谱
+- [x] 思想花园（博客/随笔/笔记）
+- [x] 个人档案页（基本资料 + 关系图谱）
 - [ ] 多媒体档案
-- [ ] 人生周数可视化增强
+- [x] 人生周数可视化增强
 
 ---
 
 ## 变更记录
+
+### 2026-07-29 — v0.3.0 (Phase 7)
+- **feat**: 个人档案页 `/about` — ProfileCard 组件，展示姓名/头像/技能/短期长期目标
+- **feat**: 关系图谱 RelationGraph — Canvas + D3-force 力导向图，9 种关系类型
+- **feat**: 粒子背景 + 节点脉冲动画（重要性≥4 呼吸光环）
+- **feat**: 悬停高亮、拖拽节点、点击弹出故事面板（共同经历）
+- **feat**: 图例筛选，按关系类型高亮/隐藏
+- **feat**: 管理后台新增「档案」Tab，单文件编辑模式
+- **feat**: Vite API 新增 write-profile 端点
+- **feat**: 导航栏新增「关于」链接，i18n 扩展
+
+### 2026-07-29 — v0.2.0 (Phase 6)
+- **feat**: 博客系统 — Content Collection `blog`，列表页 `/blog`，详情页 `/blog/[slug]`，标签页 `/blog/tag/[tag]`
+- **feat**: BlogCard + BlogList 组件，按年分组 + 标签筛选
+- **feat**: 管理后台 Tab 化 — 事件/文章双模式切换，共享编辑面板和图片上传
+- **feat**: Vite API 扩展 — `POST /api/write-post`、`DELETE /api/delete-post`
+- **feat**: 生命计数器 LifeCounter — 首页展示天/周/年，每秒实时更新，生肖 + 人生进度
+- **feat**: `site.config.ts` 新增 `birthDate` 字段，精确计算人生天数
+- **feat**: 导航栏新增「博客」链接，i18n 新增博客/计数器相关键
+- **feat**: 示例博客文章「你好，世界」
 
 ### 2026-07-29 — v0.1.3
 - **feat**: GitHub Pages 部署 — GitHub Actions 自动构建 + `astro.config.mjs` 配置 `site`/`base`
