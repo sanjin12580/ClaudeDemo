@@ -6,7 +6,6 @@ import { loadPosts } from '../../lib/parsePosts';
 import { loadProfile } from '../../lib/parseProfile';
 import { t } from '../../lib/i18n';
 
-// 加载所有事件和文章（含草稿）及档案
 const allEvents = await loadEvents(true);
 const allPosts = await loadPosts(true);
 const profile = await loadProfile();
@@ -18,11 +17,11 @@ const profile = await loadProfile();
       <h1 class="text-3xl font-bold tracking-tight">{t.admin.heading}</h1>
       <p class="mt-2 text-gray-500 dark:text-gray-400">
         {t.admin.description}{t.admin.fileSavedTo}
-        <code class="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{t.admin.dir}</code> {t.admin.and}
-        <code class="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{t.admin.blogDir}</code> {t.admin.and}
-        <code class="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{t.admin.profileDir}</code> 目录。
+        <code class="text-xs bg-gray-50 dark:bg-gray-950 px-1.5 py-0.5 rounded">{t.admin.dir}</code> {t.admin.and}
+        <code class="text-xs bg-gray-50 dark:bg-gray-950 px-1.5 py-0.5 rounded">{t.admin.blogDir}</code> {t.admin.and}
+        <code class="text-xs bg-gray-50 dark:bg-gray-950 px-1.5 py-0.5 rounded">{t.admin.profileDir}</code> 目录。
       </p>
-      <div class="mt-3 px-3 py-2 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg text-sm text-amber-700 dark:text-amber-300">
+      <div class="mt-3 px-3 py-2 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg text-sm text-yellow-500-content/80">
         ⚠️ {t.admin.warning} (<code>{t.admin.devOnly}</code>) {t.admin.warningSuffix}
       </div>
     </div>

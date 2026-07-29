@@ -21,15 +21,15 @@ const totalEvents = events.length;
 
     <LifeCounter birthDate={siteConfig.birthDate} client:load />
 
-    <LifeGrid data={gridData} client:load />
+    <div class="card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm">
+      <div class="card-body">
+        <LifeGrid data={gridData} client:load />
+      </div>
+    </div>
 
     <div class="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-800">
-      <a
-        href={to('/timeline')}
-        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-900 text-white
-               dark:bg-white dark:text-gray-900 text-sm font-medium hover:opacity-80 transition-opacity"
-      >
-        {t.home.viewTimeline}
+      <a href={to('/timeline')} class="btn btn-primary">
+        {t.home.viewTimeline} →
       </a>
     </div>
   </div>

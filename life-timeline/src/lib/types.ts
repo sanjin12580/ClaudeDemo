@@ -1,15 +1,15 @@
 /** 事件分类 */
 export type Category = '教育' | '工作' | '旅行' | '健康' | '关系' | '项目' | '其他';
 
-/** 分类的颜色映射（CSS 类名） */
+/** 分类的颜色映射（daisyUI badge 类名） */
 export const CATEGORY_COLORS: Record<Category, string> = {
-  教育: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  工作: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-  旅行: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  健康: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-  关系: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
-  项目: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-  其他: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
+  教育: 'badge-primary',
+  工作: 'badge-secondary',
+  旅行: 'badge-success',
+  健康: 'badge-error',
+  关系: 'badge-accent',
+  项目: 'badge-warning',
+  其他: 'badge-ghost',
 };
 
 /** 从 Frontmatter 解析出的事件元数据 */
