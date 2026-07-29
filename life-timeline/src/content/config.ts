@@ -20,6 +20,21 @@ const eventsCollection = defineCollection({
   }),
 });
 
+// 博客文章集合的 schema
+const blogCollection = defineCollection({
+  type: 'content',
+  schema: z.object({
+    date: z.string().regex(
+      /^\d{4}-\d{2}-\d{2}$/,
+      '日期格式必须为 YYYY-MM-DD'
+    ),
+    title: z.string().min(1, '标题不能为空'),
+    tags: z.array(z.string()).default([]),
+    draft: z.boolean().default(false),
+  }),
+});
+
 export const collections = {
   events: eventsCollection,
+  blog: blogCollection,
 };

@@ -6,6 +6,9 @@ export const siteConfig = {
   /** 出生年份 — 用于贡献图的起始年份 */
   birthYear: 1998,
 
+  /** 出生日期 — 用于精确计算人生天数/周数/年数 */
+  birthDate: '1998-06-15',
+
   /** 站点标题 */
   title: '人生时间线',
 

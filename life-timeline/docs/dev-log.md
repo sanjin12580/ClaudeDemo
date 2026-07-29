@@ -116,14 +116,24 @@ life-timeline/
 
 ### 后续子系统（远期）
 - [ ] 生活数据追踪（健康/财务/阅读/习惯）
-- [ ] 思想花园（博客/随笔/笔记）
+- [x] 思想花园（博客/随笔/笔记）
 - [ ] 关系图谱
 - [ ] 多媒体档案
-- [ ] 人生周数可视化增强
+- [x] 人生周数可视化增强
 
 ---
 
 ## 变更记录
+
+### 2026-07-29 — v0.2.0 (Phase 6)
+- **feat**: 博客系统 — Content Collection `blog`，列表页 `/blog`，详情页 `/blog/[slug]`，标签页 `/blog/tag/[tag]`
+- **feat**: BlogCard + BlogList 组件，按年分组 + 标签筛选
+- **feat**: 管理后台 Tab 化 — 事件/文章双模式切换，共享编辑面板和图片上传
+- **feat**: Vite API 扩展 — `POST /api/write-post`、`DELETE /api/delete-post`
+- **feat**: 生命计数器 LifeCounter — 首页展示天/周/年，每秒实时更新，生肖 + 人生进度
+- **feat**: `site.config.ts` 新增 `birthDate` 字段，精确计算人生天数
+- **feat**: 导航栏新增「博客」链接，i18n 新增博客/计数器相关键
+- **feat**: 示例博客文章「你好，世界」
 
 ### 2026-07-29 — v0.1.3
 - **feat**: GitHub Pages 部署 — GitHub Actions 自动构建 + `astro.config.mjs` 配置 `site`/`base`

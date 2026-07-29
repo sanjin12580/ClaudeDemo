@@ -2,6 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import LifeGrid from '../components/LifeGrid';
 import SearchBar from '../components/SearchBar';
+import LifeCounter from '../components/LifeCounter';
 import { loadEvents, buildGridData } from '../lib/parseEvents';
 import { t } from '../lib/i18n';
 import { to } from '../lib/base';
@@ -18,6 +19,8 @@ const totalEvents = events.length;
       <h1 class="text-3xl font-bold tracking-tight">{t.home.heading}</h1>
       <p class="mt-2 text-gray-500 dark:text-gray-400" set:html={t.home.summary(gridData.startYear, gridData.endYear, totalEvents)} />
     </div>
+
+    <LifeCounter birthDate={siteConfig.birthDate} client:load />
 
     <SearchBar events={events} client:load />
 

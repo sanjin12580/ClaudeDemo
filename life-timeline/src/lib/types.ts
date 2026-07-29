@@ -45,3 +45,19 @@ export interface YearGroup {
   year: number;
   events: EventMeta[];
 }
+
+/** 博客文章元数据 */
+export interface PostMeta {
+  slug: string;           // 文件名（不含扩展名），如 "2026-07-29-hello-world"
+  date: string;           // "YYYY-MM-DD"
+  title: string;
+  tags: string[];
+  draft: boolean;
+  body: string;           // Markdown 正文（渲染前）
+}
+
+/** 按年份分组的文章 */
+export interface PostYearGroup {
+  year: number;
+  posts: PostMeta[];
+}
