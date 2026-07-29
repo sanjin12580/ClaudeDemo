@@ -1,0 +1,54 @@
+{
+  "goals": [
+    {
+      "id": "g-001",
+      "title": "完成人生时间线项目",
+      "description": "使用 Astro + React + Tailwind 构建完整的个人时间线网站",
+      "progress": 85,
+      "category": "short",
+      "relatedEvents": [],
+      "status": "active",
+      "createdAt": "2026-07-01"
+    },
+    {
+      "id": "g-002",
+      "title": "每周运动 3 次",
+      "description": "跑步或健身，每次至少 30 分钟",
+      "progress": 60,
+      "category": "short",
+      "relatedEvents": [],
+      "status": "active",
+      "createdAt": "2026-07-15"
+    },
+    {
+      "id": "g-003",
+      "title": "阅读 12 本书",
+      "description": "今年读完 12 本非技术类书籍",
+      "progress": 33,
+      "category": "short",
+      "relatedEvents": [],
+      "status": "active",
+      "createdAt": "2026-01-01"
+    },
+    {
+      "id": "g-004",
+      "title": "成为全栈独立开发者",
+      "description": "掌握前端、后端、运维全链路，能够独立交付产品",
+      "progress": 40,
+      "category": "long",
+      "relatedEvents": [],
+      "status": "active",
+      "createdAt": "2026-01-01"
+    },
+    {
+      "id": "g-005",
+      "title": "环游世界",
+      "description": "至少去过 20 个国家",
+      "progress": 15,
+      "category": "long",
+      "relatedEvents": [],
+      "status": "active",
+      "createdAt": "2026-01-01"
+    }
+  ]
+}

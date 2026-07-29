@@ -8,6 +8,7 @@ import path from 'node:path';
  * - DELETE /api/delete-event 删除事件
  * - POST /api/write-post  创建博客文章
  * - DELETE /api/delete-post 删除博客文章
+ * - POST /api/write-goals 保存目标
  * - POST /api/upload-image 上传图片
  */
 export function adminApiPlugin(): Plugin {
@@ -363,6 +364,50 @@ longGoal: "${longGoal || ''}"
 
             const filePath = path.join(profileDir, 'about.md');
             fs.writeFileSync(filePath, fileContent, 'utf-8');
+
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+              success: true,
+              path: path.relative(process.cwd(), filePath),
+            }));
+          } catch (err) {
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+              error: '保存失败',
+              detail: err instanceof Error ? err.message : String(err),
+            }));
+          }
+        });
+      });
+
+      // === 保存目标 ===
+      server.middlewares.use('/api/write-goals', (req, res) => {
+        if (req.method !== 'POST') {
+          res.statusCode = 405;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: '仅支持 POST 方法' }));
+          return;
+        }
+
+        readBody(req).then((body) => {
+          try {
+            const { goals } = JSON.parse(body);
+
+            if (!Array.isArray(goals)) {
+              res.statusCode = 400;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: '缺少 goals 数组' }));
+              return;
+            }
+
+            const dataDir = path.resolve(process.cwd(), 'src', 'data');
+            if (!fs.existsSync(dataDir)) {
+              fs.mkdirSync(dataDir, { recursive: true });
+            }
+
+            const filePath = path.join(dataDir, 'goals.json');
+            fs.writeFileSync(filePath, JSON.stringify({ goals }, null, 2), 'utf-8');
 
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({
