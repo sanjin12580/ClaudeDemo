@@ -1,6 +1,7 @@
 import type { EventMeta } from '../lib/types';
 import { CATEGORY_COLORS } from '../lib/types';
 import { useI18n } from '../lib/i18n';
+import { to } from '../lib/base';
 
 interface Props {
   event: EventMeta;
@@ -35,7 +36,7 @@ export default function EventCard({ event }: Props) {
 
   return (
     <a
-      href={`/events/${event.slug}`}
+      href={to(`/events/${event.slug}`)}
       className="group block border border-gray-200 dark:border-gray-800 rounded-xl p-5
                  hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-200
                  hover:shadow-sm bg-white dark:bg-gray-900 cursor-pointer

@@ -2,6 +2,7 @@
 import { getCollection } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
 import { t } from '../../lib/i18n';
+import { to } from '../../lib/base';
 import { CATEGORY_COLORS } from '../../lib/types';
 
 export async function getStaticPaths() {
@@ -48,7 +49,7 @@ function getSlug(e: NonNullable<typeof entry>): string {
   <article class="max-w-3xl mx-auto">
     <!-- 返回链接 -->
     <a
-      href="/timeline"
+      href={to('/timeline')}
       class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900
              dark:text-gray-400 dark:hover:text-gray-200 transition-colors mb-8"
     >
@@ -114,7 +115,7 @@ function getSlug(e: NonNullable<typeof entry>): string {
     <nav class="mt-16 pt-8 border-t border-gray-200 dark:border-gray-800 grid grid-cols-2 gap-4">
       <div>
         {prevEntry ? (
-          <a href={`/events/${getSlug(prevEntry)}`}
+          <a href={to(`/events/${getSlug(prevEntry)}`)}
              class="group block p-4 rounded-lg border border-gray-200 dark:border-gray-800
                     hover:border-gray-400 dark:hover:border-gray-600 transition-all
                     hover:shadow-sm bg-white dark:bg-gray-900">
@@ -132,7 +133,7 @@ function getSlug(e: NonNullable<typeof entry>): string {
       </div>
       <div>
         {nextEntry ? (
-          <a href={`/events/${getSlug(nextEntry)}`}
+          <a href={to(`/events/${getSlug(nextEntry)}`)}
              class="group block p-4 rounded-lg border border-gray-200 dark:border-gray-800
                     hover:border-gray-400 dark:hover:border-gray-600 transition-all
                     hover:shadow-sm bg-white dark:bg-gray-900 text-right">

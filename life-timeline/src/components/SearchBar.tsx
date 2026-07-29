@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import type { EventMeta } from '../lib/types';
 import { CATEGORY_COLORS } from '../lib/types';
 import { useI18n } from '../lib/i18n';
+import { to } from '../lib/base';
 
 interface Props {
   events: EventMeta[];
@@ -97,7 +98,7 @@ export default function SearchBar({ events, onQueryChange }: Props) {
       setActiveIndex((prev) => (prev > 0 ? prev - 1 : results.length - 1));
     } else if (e.key === 'Enter' && activeIndex >= 0) {
       e.preventDefault();
-      window.location.href = `/events/${results[activeIndex].slug}`;
+      window.location.href = to(`/events/${results[activeIndex].slug}`);
     }
   }
 
@@ -176,7 +177,7 @@ export default function SearchBar({ events, onQueryChange }: Props) {
               return (
                 <li key={event.slug}>
                   <a
-                    href={`/events/${event.slug}`}
+                    href={to(`/events/${event.slug}`)}
                     className={`flex items-start gap-3 px-3 py-2.5 transition-colors cursor-pointer
                       ${i === activeIndex
                         ? 'bg-green-50 dark:bg-green-950'

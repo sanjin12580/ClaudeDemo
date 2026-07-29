@@ -4,6 +4,7 @@ import LifeGrid from '../components/LifeGrid';
 import SearchBar from '../components/SearchBar';
 import { loadEvents, buildGridData } from '../lib/parseEvents';
 import { t } from '../lib/i18n';
+import { to } from '../lib/base';
 import { siteConfig } from '../site.config';
 
 const events = await loadEvents();
@@ -24,7 +25,7 @@ const totalEvents = events.length;
 
     <div class="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-800">
       <a
-        href="/timeline"
+        href={to('/timeline')}
         class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-900 text-white
                dark:bg-white dark:text-gray-900 text-sm font-medium hover:opacity-80 transition-opacity"
       >
