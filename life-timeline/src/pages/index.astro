@@ -1,11 +1,13 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import LifeGrid from '../components/LifeGrid';
+import SearchBar from '../components/SearchBar';
 import { loadEvents, buildGridData } from '../lib/parseEvents';
 import { t } from '../lib/i18n';
+import { siteConfig } from '../site.config';
 
 const events = await loadEvents();
-const gridData = buildGridData(events, 1998);
+const gridData = buildGridData(events, siteConfig.birthYear);
 const totalEvents = events.length;
 ---
 
@@ -15,6 +17,8 @@ const totalEvents = events.length;
       <h1 class="text-3xl font-bold tracking-tight">{t.home.heading}</h1>
       <p class="mt-2 text-gray-500 dark:text-gray-400" set:html={t.home.summary(gridData.startYear, gridData.endYear, totalEvents)} />
     </div>
+
+    <SearchBar events={events} client:load />
 
     <LifeGrid data={gridData} client:load />
 

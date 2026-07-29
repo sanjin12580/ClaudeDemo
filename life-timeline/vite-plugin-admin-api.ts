@@ -6,11 +6,80 @@ import path from 'node:path';
  * Vite 插件：在开发模式下提供管理后台 API
  * - POST /api/write-event  创建事件
  * - DELETE /api/delete-event 删除事件
+ * - POST /api/upload-image 上传图片
  */
 export function adminApiPlugin(): Plugin {
   return {
     name: 'admin-api',
     configureServer(server) {
+      // === 上传图片 ===
+      server.middlewares.use('/api/upload-image', (req, res) => {
+        if (req.method !== 'POST') {
+          res.statusCode = 405;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: '仅支持 POST 方法' }));
+          return;
+        }
+
+        readBody(req).then((body) => {
+          try {
+            const { filename, data } = JSON.parse(body);
+
+            if (!filename || !data) {
+              res.statusCode = 400;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: '缺少 filename 或 data' }));
+              return;
+            }
+
+            // 提取 base64 数据
+            const matches = data.match(/^data:image\/([\w+]+);base64,(.+)$/);
+            if (!matches) {
+              res.statusCode = 400;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: '无效的图片数据格式，需要 data URI' }));
+              return;
+            }
+
+            const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+            const base64Data = matches[2];
+            const buffer = Buffer.from(base64Data, 'base64');
+
+            // 限制文件大小 10MB
+            if (buffer.length > 10 * 1024 * 1024) {
+              res.statusCode = 400;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: '图片不能超过 10MB' }));
+              return;
+            }
+
+            // 生成唯一文件名
+            const baseName = filename.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_.-]/g, '-').replace(/-+/g, '-').slice(0, 60);
+            const uniqueName = `${Date.now()}-${baseName}.${ext}`;
+            const imagesDir = path.resolve(process.cwd(), 'public', 'images');
+
+            if (!fs.existsSync(imagesDir)) {
+              fs.mkdirSync(imagesDir, { recursive: true });
+            }
+
+            const filePath = path.join(imagesDir, uniqueName);
+            fs.writeFileSync(filePath, new Uint8Array(buffer));
+
+            const url = `/images/${uniqueName}`;
+
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: true, url, filename: uniqueName }));
+          } catch (err) {
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+              error: '上传失败',
+              detail: err instanceof Error ? err.message : String(err),
+            }));
+          }
+        });
+      });
+
       // === 创建事件 ===
       server.middlewares.use('/api/write-event', (req, res) => {
         if (req.method !== 'POST') {

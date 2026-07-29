@@ -57,7 +57,7 @@ for (const event of yearEvents) {
             .map(([month, events]) => {
               const monthLabel = `${parseInt(month.slice(5), 10)} 月`;
               return (
-                <section key={month}>
+                <section data-month={month}>
                   <h2 class="text-2xl font-bold text-gray-300 dark:text-gray-700 mb-4">
                     {monthLabel}
                   </h2>

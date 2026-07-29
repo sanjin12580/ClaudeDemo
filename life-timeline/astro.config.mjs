@@ -5,6 +5,8 @@ import { adminApiPlugin } from './vite-plugin-admin-api';
 
 // https://astro.build/config
 export default defineConfig({
+  site: 'https://sanjin12580.github.io',
+  base: '/ClaudeDemo',
   integrations: [react()],
   devToolbar: { enabled: false },
   vite: {

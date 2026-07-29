@@ -17,6 +17,7 @@ export const zh = {
   nav: {
     home: '人生时间线',
     timeline: '时间线',
+    admin: '⚙️ 管理',
   },
   home: {
     heading: '🟩 人生全貌',
@@ -82,6 +83,12 @@ export const zh = {
     saveFailed: '保存失败',
     networkError: (msg: string) => `网络错误: ${msg}`,
     unknownError: '未知错误',
+    // 图片上传
+    imageUpload: '📷 上传图片',
+    imageDrop: '拖拽图片到此处，或点击选择',
+    imageUploading: '上传中...',
+    imageFailed: '上传失败',
+    imageMaxSize: '图片不能超过 10MB',
   },
   lifeGrid: {
     less: '清淡',
@@ -90,6 +97,24 @@ export const zh = {
   },
   eventCard: {
     importance: (v: number) => `重要性: ${v}/5`,
+  },
+  eventDetail: {
+    back: '← 返回时间线',
+    prev: '← 上一篇',
+    next: '下一篇 →',
+    importance: (v: number) => `重要性: ${v}/5`,
+    notFound: '事件未找到',
+  },
+  theme: {
+    toggle: '切换主题',
+    toDark: '切换到暗色模式',
+    toLight: '切换到亮色模式',
+  },
+  search: {
+    placeholder: '搜索事件...',
+    results: (n: number) => `找到 ${n} 个结果`,
+    noResults: '没有找到匹配的事件',
+    clear: '清除搜索',
   },
   categories: {
     all: '全部',
