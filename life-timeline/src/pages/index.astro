@@ -1,7 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import LifeGrid from '../components/LifeGrid';
-import SearchBar from '../components/SearchBar';
 import LifeCounter from '../components/LifeCounter';
 import { loadEvents, buildGridData } from '../lib/parseEvents';
 import { t } from '../lib/i18n';
@@ -21,8 +20,6 @@ const totalEvents = events.length;
     </div>
 
     <LifeCounter birthDate={siteConfig.birthDate} client:load />
-
-    <SearchBar events={events} client:load />
 
     <LifeGrid data={gridData} client:load />
 
