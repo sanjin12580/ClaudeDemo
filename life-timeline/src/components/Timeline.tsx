@@ -69,63 +69,73 @@ export default function Timeline({ events }: Props) {
 
       {/* 筛选器 */}
       <div className="flex flex-wrap gap-4 items-center">
-        <div className="flex gap-1.5 flex-wrap">
-          {allCats.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`text-xs px-3 py-1 rounded-full transition-colors
-                ${selectedCategory === cat
-                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-                }`}
-            >
-              {cat}
-            </button>
-          ))}
+        {/* 分类筛选 */}
+        <div className="flex gap-1 flex-wrap">
+          {allCats.map((cat) => {
+            const isActive = selectedCategory === cat;
+            return (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`btn btn-sm text-xs transition-all duration-200
+                  ${isActive ? 'btn-primary' : 'btn-ghost'}`}
+              >
+                {cat}
+              </button>
+            );
+          })}
         </div>
 
+        {/* 标签筛选 */}
         {allTags.length > 0 && (
           <div className="flex gap-1 flex-wrap">
-            {allTags.map((tag) => (
-              <button
-                key={tag}
-                onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
-                className={`text-xs px-2 py-0.5 rounded-full transition-colors
-                  ${selectedTag === tag
-                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 ring-1 ring-green-400'
-                    : 'text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400'
-                  }`}
-              >
-                #{tag}
-              </button>
-            ))}
+            {allTags.map((tag) => {
+              const isActive = selectedTag === tag;
+              return (
+                <button
+                  key={tag}
+                  onClick={() => setSelectedTag(isActive ? null : tag)}
+                  className={`badge badge-sm cursor-pointer transition-all duration-200
+                    ${isActive
+                      ? 'badge-primary'
+                      : 'badge-ghost hover:badge-outline'
+                    }`}
+                >
+                  #{tag}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
 
-      <p className="text-sm text-gray-400">
+      {/* 统计 */}
+      <p className="text-sm text-gray-400 dark:text-gray-500">
         {t.count(filteredEvents.length)}
         {selectedCategory !== catT.all && t.filterBy(selectedCategory)}
         {selectedTag && ` · #${selectedTag}`}
       </p>
 
+      {/* 时间线 */}
       {yearGroups.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">{t.noEvents}</div>
+        <div className="text-center py-16 text-gray-400 dark:text-gray-500">{t.noEvents}</div>
       ) : (
-        <div className="space-y-12">
+        <div className="space-y-14">
           {yearGroups.map((group) => (
             <section key={group.year}>
-              <div className="sticky top-4 z-10 mb-6">
-                <h2 className="text-5xl font-bold text-gray-200 dark:text-gray-800 select-none">
+              {/* 年份标题 */}
+              <div className="sticky top-16 z-10 mb-6">
+                <h2 className="text-6xl font-black text-gray-900 dark:text-gray-100/5 select-none -ml-2">
                   {group.year}
                 </h2>
               </div>
 
-              <div className="space-y-4 relative pl-8 border-l-2 border-gray-200 dark:border-gray-800">
+              {/* 事件列表 */}
+              <div className="space-y-4 relative pl-8 border-l-2 border-green-200 dark:border-green-800">
                 {group.events.map((event) => (
                   <div key={event.slug} className="relative">
-                    <div className="absolute -left-[calc(2rem+5px)] top-6 w-3 h-3 rounded-full bg-green-500 border-2 border-white dark:border-gray-950" />
+                    {/* 时间轴圆点 */}
+                    <div className="absolute -left-[calc(0.5rem+5px)] top-6 w-3 h-3 rounded-full bg-green-600 dark:bg-green-500 ring-2 ring-base-100" />
                     <EventCard event={event} />
                   </div>
                 ))}

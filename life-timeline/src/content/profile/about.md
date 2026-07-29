@@ -2,9 +2,9 @@
 name: "Chen Sanjin"
 tagline: "认真生活"
 avatar: ""
-birthDate: "1998-06-15"
-skills: ["前端开发", "React", "TypeScript", "摄影", "徒步", "阅读"]
-shortGoal: "完成人生时间线项目，坚持每周写一篇博客"
+birthDate: "1999-01-01"
+skills: ["退堂鼓一级演奏家", "洛克王国世界国王", "恩佐学弟"]
+shortGoal: "完成人生时间线项目"
 longGoal: "成为一个全栈独立开发者，环游世界"
 ---
 

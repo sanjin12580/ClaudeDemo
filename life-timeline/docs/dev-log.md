@@ -1,6 +1,6 @@
 # 人生时间线 — 开发日志
 
-> 最后更新：2026-07-29
+> 最后更新：2026-07-29 (Phase 8 完成)
 
 ---
 
@@ -124,6 +124,16 @@ life-timeline/
 ---
 
 ## 变更记录
+
+### 2026-07-29 — v0.4.0 (Phase 8)
+- **feat**: daisyUI v5 + motion 框架集成，全局主题系统
+- **feat**: 导航栏毛玻璃效果 + 路由高亮 + 页脚
+- **feat**: 所有组件/页面颜色统一为 daisyUI token
+- **feat**: LifeCounter motion 入场动画 + 进度条
+- **feat**: 卡片 hover 抬起 + 阴影增强
+- **style**: 按钮/标签/表单全面使用 daisyUI 组件类
+- **style**: 全局滚动条美化 + 选中颜色
+- **deps**: daisyui@5.7.4, motion@12.43.0
 
 ### 2026-07-29 — v0.3.0 (Phase 7)
 - **feat**: 个人档案页 `/about` — ProfileCard 组件，展示姓名/头像/技能/短期长期目标

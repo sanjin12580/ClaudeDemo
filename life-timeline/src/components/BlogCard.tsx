@@ -30,13 +30,12 @@ export default function BlogCard({ post }: Props) {
   return (
     <a
       href={to(`/blog/${post.slug}`)}
-      className="group block border border-gray-200 dark:border-gray-800 rounded-xl p-5
-                 hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-200
-                 hover:shadow-sm bg-white dark:bg-gray-900 cursor-pointer
-                 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2
-                 dark:focus:ring-offset-gray-950"
+      className="group card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5
+                 shadow-sm hover:shadow-md hover:-translate-y-0.5
+                 transition-all duration-300 cursor-pointer
+                 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
     >
-      <time className="text-sm text-gray-500 dark:text-gray-400 font-mono">
+      <time className="text-sm text-gray-500 dark:text-gray-400 font-mono tabular-nums">
         {formatDate(post.date)}
       </time>
 
@@ -55,8 +54,7 @@ export default function BlogCard({ post }: Props) {
           {post.tags.map((tag) => (
             <span
               key={tag}
-              className="text-xs text-gray-500 dark:text-gray-500 bg-gray-100 dark:bg-gray-800
-                         px-2 py-0.5 rounded-full"
+              className="badge badge-sm badge-ghost text-gray-500 dark:text-gray-400"
             >
               #{tag}
             </span>

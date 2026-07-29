@@ -28,11 +28,8 @@ export default function BlogList({ posts }: Props) {
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setSelectedTag(null)}
-            className={`text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${
-              selectedTag === null
-                ? 'bg-green-600 text-white dark:bg-green-500'
-                : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-            }`}
+            className={`btn btn-sm text-xs transition-all duration-200
+              ${selectedTag === null ? 'btn-primary' : 'btn-ghost'}`}
           >
             {t.allTags}
           </button>
@@ -40,11 +37,8 @@ export default function BlogList({ posts }: Props) {
             <button
               key={tag}
               onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
-              className={`text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${
-                selectedTag === tag
-                  ? 'bg-green-600 text-white dark:bg-green-500'
-                  : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-              }`}
+              className={`btn btn-sm text-xs transition-all duration-200
+                ${selectedTag === tag ? 'btn-primary' : 'btn-ghost'}`}
             >
               #{tag}
               <span className="ml-1 opacity-60">{count}</span>
@@ -57,7 +51,7 @@ export default function BlogList({ posts }: Props) {
       {yearGroups.length > 0 ? (
         yearGroups.map((group) => (
           <section key={group.year}>
-            <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-4 sticky top-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur py-2 z-10">
+            <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-4 sticky top-16 bg-white dark:bg-gray-900/80 backdrop-blur py-2 z-10">
               {group.year}
             </h2>
             <div className="space-y-4">

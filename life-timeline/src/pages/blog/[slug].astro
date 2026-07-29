@@ -13,7 +13,6 @@ export async function getStaticPaths() {
 
 const { slug } = Astro.params;
 
-// 查找匹配的文章
 const entries = await getCollection('blog');
 const entry = entries.find((e) => e.id.replace(/\.(md|mdx)$/, '') === slug);
 if (!entry) {
@@ -23,14 +22,12 @@ if (!entry) {
 const { Content } = await entry.render();
 const { date, title, tags } = entry.data;
 
-// 格式化日期
 function formatDate(dateStr: string): string {
   const parts = dateStr.split('-');
   if (parts.length === 3) return `${parts[0]} 年 ${parseInt(parts[1])} 月 ${parseInt(parts[2])} 日`;
   return dateStr;
 }
 
-// 上一篇 / 下一篇
 const allEntries = await getCollection('blog', ({ data }) => !data.draft);
 allEntries.sort((a, b) => b.data.date.localeCompare(a.data.date));
 const currentIndex = allEntries.findIndex((e) => e.id === entry.id);
@@ -47,8 +44,7 @@ function getSlug(e: NonNullable<typeof entry>): string {
     <!-- 返回链接 -->
     <a
       href={to('/blog')}
-      class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900
-             dark:text-gray-400 dark:hover:text-gray-200 transition-colors mb-8"
+      class="inline-flex items-center gap-1 text-sm text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:text-gray-100 transition-colors mb-8"
     >
       <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
@@ -58,21 +54,18 @@ function getSlug(e: NonNullable<typeof entry>): string {
 
     <!-- 元数据卡片 -->
     <header class="mb-10 p-6 rounded-xl bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800">
-      <time class="text-sm text-gray-500 dark:text-gray-400 font-mono">
+      <time class="text-sm text-gray-500 dark:text-gray-400 font-mono tabular-nums">
         {formatDate(date)}
       </time>
 
       <h1 class="text-3xl font-bold tracking-tight mt-2 mb-4">{title}</h1>
 
-      <!-- 标签 -->
       {tags.length > 0 && (
         <div class="flex gap-1.5 flex-wrap">
           {tags.map((tag) => (
             <a
               href={to(`/blog/tag/${tag}`)}
-              class="text-xs text-gray-500 dark:text-gray-400 bg-gray-200/60 dark:bg-gray-800
-                     px-2 py-0.5 rounded-full hover:bg-green-100 dark:hover:bg-green-900/30
-                     hover:text-green-700 dark:hover:text-green-400 transition-colors"
+              class="badge badge-sm badge-ghost hover:badge-primary transition-all"
             >
               #{tag}
             </a>
@@ -83,12 +76,12 @@ function getSlug(e: NonNullable<typeof entry>): string {
 
     <!-- Markdown 正文 -->
     <div class="prose prose-gray dark:prose-invert max-w-none
-                prose-headings:font-semibold prose-a:text-green-600 dark:prose-a:text-green-400
+                prose-headings:font-semibold prose-a:text-green-600 dark:text-green-400
                 prose-img:rounded-xl prose-img:shadow-md
-                prose-pre:bg-gray-900 dark:prose-pre:bg-gray-800
-                prose-code:bg-gray-100 dark:prose-code:bg-gray-800 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-sm
-                prose-blockquote:border-green-400 prose-blockquote:bg-gray-50 dark:prose-blockquote:bg-gray-950
-                prose-li:marker:text-gray-400">
+                prose-pre:bg-gray-200 dark:bg-gray-800
+                prose-code:bg-gray-50 dark:bg-gray-950 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-sm
+                prose-blockquote:border-green-500 prose-blockquote:bg-gray-50 dark:bg-gray-950
+                prose-li:marker:text-gray-300 dark:text-gray-600">
       <Content />
     </div>
 
@@ -97,9 +90,8 @@ function getSlug(e: NonNullable<typeof entry>): string {
       <div>
         {prevEntry ? (
           <a href={to(`/blog/${getSlug(prevEntry)}`)}
-             class="group block p-4 rounded-lg border border-gray-200 dark:border-gray-800
-                    hover:border-gray-400 dark:hover:border-gray-600 transition-all
-                    hover:shadow-sm bg-white dark:bg-gray-900">
+             class="group card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 rounded-lg
+                    hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
             <span class="text-xs text-gray-400 dark:text-gray-500">{t.blog.prevPost}</span>
             <p class="text-sm font-medium mt-1 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors line-clamp-1">
               {prevEntry.data.title}
@@ -108,16 +100,15 @@ function getSlug(e: NonNullable<typeof entry>): string {
         ) : (
           <div class="p-4 rounded-lg border border-dashed border-gray-200 dark:border-gray-800 opacity-50">
             <span class="text-xs text-gray-400 dark:text-gray-500">{t.blog.prevPost}</span>
-            <p class="text-sm text-gray-400 mt-1">{t.blog.noPrev}</p>
+            <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">{t.blog.noPrev}</p>
           </div>
         )}
       </div>
       <div>
         {nextEntry ? (
           <a href={to(`/blog/${getSlug(nextEntry)}`)}
-             class="group block p-4 rounded-lg border border-gray-200 dark:border-gray-800
-                    hover:border-gray-400 dark:hover:border-gray-600 transition-all
-                    hover:shadow-sm bg-white dark:bg-gray-900 text-right">
+             class="group card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 rounded-lg text-right
+                    hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
             <span class="text-xs text-gray-400 dark:text-gray-500">{t.blog.nextPost}</span>
             <p class="text-sm font-medium mt-1 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors line-clamp-1">
               {nextEntry.data.title}
@@ -126,7 +117,7 @@ function getSlug(e: NonNullable<typeof entry>): string {
         ) : (
           <div class="p-4 rounded-lg border border-dashed border-gray-200 dark:border-gray-800 opacity-50 text-right">
             <span class="text-xs text-gray-400 dark:text-gray-500">{t.blog.nextPost}</span>
-            <p class="text-sm text-gray-400 mt-1">{t.blog.noNext}</p>
+            <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">{t.blog.noNext}</p>
           </div>
         )}
       </div>

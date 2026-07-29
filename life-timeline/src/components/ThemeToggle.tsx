@@ -23,8 +23,10 @@ function applyTheme(theme: Theme) {
   root.classList.add('transitioning');
   if (theme === 'dark') {
     root.classList.add('dark');
+    root.setAttribute('data-theme', 'dim');
   } else {
     root.classList.remove('dark');
+    root.setAttribute('data-theme', 'emerald');
   }
   // 过渡完成后移除标记类
   setTimeout(() => root.classList.remove('transitioning'), 300);

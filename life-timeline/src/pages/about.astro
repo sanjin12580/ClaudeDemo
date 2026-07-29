@@ -8,7 +8,6 @@ import type { RelationsData } from '../lib/types';
 
 const profile = await loadProfile();
 
-// 用 Vite 的 import.meta.glob 在服务端加载 JSON
 const relationsModules = import.meta.glob<{ default: RelationsData }>(
   '../data/relations.json',
   { eager: true }
@@ -19,7 +18,6 @@ const relations = relationsModules[relationsKey]?.default ?? { people: [] };
 if (!profile) {
   return new Response('档案未配置，请在管理后台创建个人档案。', { status: 404 });
 }
-
 ---
 
 <Layout title={profile.name} description={profile.tagline}>

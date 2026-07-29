@@ -2,13 +2,13 @@ import { useState } from 'react';
 import type { GridData, CellData } from '../lib/types';
 import { useI18n } from '../lib/i18n';
 
-// 贡献图颜色阶梯
+// 贡献图颜色阶梯 — 使用 daisyUI token
 const INTENSITY_COLORS = [
-  'bg-gray-100 dark:bg-gray-800',
-  'bg-green-200 dark:bg-green-900',
-  'bg-green-400 dark:bg-green-700',
-  'bg-green-500 dark:bg-green-600',
-  'bg-green-700 dark:bg-green-400',
+  'bg-gray-50 dark:bg-gray-950 dark:bg-gray-900 dark:bg-gray-100',
+  'bg-success/30',
+  'bg-success/50',
+  'bg-success/70',
+  'bg-success',
 ];
 
 // 月份标签
@@ -41,7 +41,7 @@ export default function LifeGrid({ data }: Props) {
           {years.map((year) => (
             <div
               key={year}
-              className="text-xs text-gray-400 dark:text-gray-600 text-right font-mono leading-[14px] h-[14px]"
+              className="text-xs text-gray-300 dark:text-gray-600 text-right font-mono leading-[14px] h-[14px]"
             >
               {year}
             </div>
@@ -53,7 +53,7 @@ export default function LifeGrid({ data }: Props) {
             {MONTH_LABELS.map((month, i) => (
               <div
                 key={month}
-                className="text-[10px] text-gray-400 dark:text-gray-600"
+                className="text-[10px] text-gray-300 dark:text-gray-600"
                 style={{ position: 'relative', left: `${i * (52 / 12) * 15}px` }}
               >
                 {month}
@@ -108,7 +108,7 @@ export default function LifeGrid({ data }: Props) {
         </div>
       )}
 
-      <div className="flex items-center gap-2 mt-4 text-xs text-gray-400">
+      <div className="flex items-center gap-2 mt-4 text-xs text-gray-400 dark:text-gray-500">
         <span>{t.less}</span>
         {INTENSITY_COLORS.map((color, i) => (
           <div key={i} className={`w-3 h-3 rounded-sm ${color}`} />

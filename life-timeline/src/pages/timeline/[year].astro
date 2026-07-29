@@ -32,9 +32,9 @@ for (const event of yearEvents) {
     <div>
       <a
         href={to('/timeline')}
-        class="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+        class="text-sm text-gray-400 dark:text-gray-500 hover:text-gray-800 dark:text-gray-200 transition-colors"
       >
-        {t.yearPage.back}
+        ← {t.yearPage.back}
       </a>
       <h1 class="text-3xl font-bold tracking-tight mt-2">{year} 年</h1>
       <p class="mt-2 text-gray-500 dark:text-gray-400">
@@ -44,10 +44,10 @@ for (const event of yearEvents) {
 
     {
       yearEvents.length === 0 ? (
-        <div class="text-center py-16 text-gray-400">
+        <div class="text-center py-16 text-gray-400 dark:text-gray-500">
           {t.yearPage.empty}
           <br />
-          <a href="/admin" class="text-green-600 hover:underline text-sm mt-2 inline-block">
+          <a href="/admin" class="text-green-600 dark:text-green-400 hover:underline text-sm mt-2 inline-block">
             {t.yearPage.goAdd}
           </a>
         </div>
@@ -59,14 +59,14 @@ for (const event of yearEvents) {
               const monthLabel = `${parseInt(month.slice(5), 10)} 月`;
               return (
                 <section data-month={month}>
-                  <h2 class="text-2xl font-bold text-gray-300 dark:text-gray-700 mb-4">
+                  <h2 class="text-2xl font-bold text-gray-200 dark:text-gray-700 mb-4">
                     {monthLabel}
                   </h2>
-                  <div class="space-y-3 pl-6 border-l-2 border-gray-100 dark:border-gray-800">
+                  <div class="space-y-3 pl-6 border-l-2 border-green-200 dark:border-green-800">
                     {events.map((event) => (
                       <div class="relative">
                         <div class="absolute -left-[calc(1.5rem+5px)] top-5 w-2.5 h-2.5
-                                    rounded-full bg-green-400 border-2 border-white dark:border-gray-950" />
+                                    rounded-full bg-green-600 dark:bg-green-500 ring-2 ring-base-100" />
                         <EventCard event={event} client:load />
                       </div>
                     ))}

@@ -1,28 +1,30 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
+@plugin "daisyui" {
+  themes: emerald --default, dim --prefersdark;
+}
 
 /* 切换到 class-based 暗色模式，由 JS 控制 .dark 类 */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* 自定义 CSS 变量 - 贡献图颜色主题 */
+/* 自定义 CSS 变量 */
 :root {
-  --color-life-0: #ebedf0;   /* 无事件 */
-  --color-life-1: #9be9a8;   /* 轻微 */
-  --color-life-2: #40c463;   /* 中等 */
-  --color-life-3: #30a14e;   /* 较多 */
-  --color-life-4: #216e39;   /* 丰富 */
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --color-life-0: #ebedf0;
+  --color-life-1: #9be9a8;
+  --color-life-2: #40c463;
+  --color-life-3: #30a14e;
+  --color-life-4: #216e39;
 }
 
+/* 全局排版优化 */
 body {
-  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* 主题切换过渡 */
 html {
-  transition: color 0.3s ease, background-color 0.3s ease;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 html.transitioning,
 html.transitioning *,
@@ -33,4 +35,25 @@ html.transitioning *::after {
   transition: border-color 0.3s ease !important;
   transition: fill 0.3s ease !important;
   transition: stroke 0.3s ease !important;
+}
+
+/* 滚动条美化 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(0.55 0.02 260 / 0.3);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.55 0.02 260 / 0.5);
+}
+
+/* 选中文字颜色 */
+::selection {
+  background: oklch(0.65 0.15 160 / 0.3);
 }

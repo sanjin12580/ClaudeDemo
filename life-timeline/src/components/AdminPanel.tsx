@@ -39,7 +39,7 @@ interface Props {
 // 轻量 Markdown 渲染（不引入外部库）
 // ============================================================
 function renderMarkdown(text: string): string {
-  if (!text) return '<p class="text-gray-400 italic">（空内容）</p>';
+  if (!text) return '<p class="text-gray-400 dark:text-gray-500 italic">（空内容）</p>';
   let html = text
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/^### (.+)$/gm, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>')
@@ -50,7 +50,7 @@ function renderMarkdown(text: string): string {
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="text-green-600 dark:text-green-400 underline">$1</a>')
     .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="rounded-lg max-w-full my-2" />')
     .replace(/`([^`]+)`/g, '<code class="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">$1</code>')
-    .replace(/^> (.+)$/gm, '<blockquote class="border-l-2 border-green-400 pl-3 italic text-gray-500 dark:text-gray-400 my-2">$1</blockquote>')
+    .replace(/^> (.+)$/gm, '<blockquote class="border-l-2 border-green-400 pl-3 italic text-gray-500 dark:text-gray-400 dark:text-gray-400 dark:text-gray-500 my-2">$1</blockquote>')
     .replace(/^- (.+)$/gm, '<li class="ml-4 list-disc">$1</li>')
     .replace(/^---$/gm, '<hr class="my-4 border-gray-200 dark:border-gray-700" />')
     .replace(/\n\n+/g, '</p><p class="mb-2 leading-relaxed">');
@@ -392,7 +392,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
             className={`flex-1 text-sm px-4 py-3 transition-colors font-medium
               ${mode === 'events'
                 ? 'text-green-600 dark:text-green-400 border-b-2 border-green-500 bg-white dark:bg-gray-900'
-                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 border-b-2 border-transparent'
+                : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 border-b-2 border-transparent'
               }`}
           >
             {t.tabEvents}
@@ -402,7 +402,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
             className={`flex-1 text-sm px-4 py-3 transition-colors font-medium
               ${mode === 'posts'
                 ? 'text-green-600 dark:text-green-400 border-b-2 border-green-500 bg-white dark:bg-gray-900'
-                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 border-b-2 border-transparent'
+                : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 border-b-2 border-transparent'
               }`}
           >
             {t.tabPosts}
@@ -412,7 +412,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
             className={`flex-1 text-sm px-4 py-3 transition-colors font-medium
               ${mode === 'profile'
                 ? 'text-green-600 dark:text-green-400 border-b-2 border-green-500 bg-white dark:bg-gray-900'
-                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 border-b-2 border-transparent'
+                : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 border-b-2 border-transparent'
               }`}
           >
             {t.tabProfile}
@@ -424,7 +424,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
         <div className="p-4 border-b border-gray-200 dark:border-gray-800 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-sm">{mode === 'events' ? t.eventList : t.postList}</h2>
-            <span className="text-xs text-gray-400">{filteredCount}</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500">{filteredCount}</span>
           </div>
 
           {/* 搜索 */}
@@ -447,7 +447,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
                   className={`text-[11px] px-2 py-0.5 rounded-full transition-colors
                     ${filterCategory === cat
                       ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                      : 'bg-gray-200/50 dark:bg-gray-800 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'
+                      : 'bg-gray-200/50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                     }`}
                 >
                   {cat}
@@ -469,7 +469,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
         {/* 列表内容 */}
         <div className="flex-1 overflow-y-auto">
           {filteredCount === 0 ? (
-            <div className="text-center py-12 text-xs text-gray-400">{t.emptyList}</div>
+            <div className="text-center py-12 text-xs text-gray-400 dark:text-gray-500">{t.emptyList}</div>
           ) : mode === 'events' ? (
             /* ======== 事件列表 ======== */
             <div className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -494,7 +494,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
                     </div>
                     <p className="text-sm font-medium truncate">{event.title}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[11px] text-gray-400 font-mono">{event.date}</span>
+                      <span className="text-[11px] text-gray-400 dark:text-gray-500 font-mono">{event.date}</span>
                       <span className="text-[11px] text-yellow-500">{'★'.repeat(event.importance)}</span>
                     </div>
                   </div>
@@ -518,7 +518,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
                       </span>
                     )}
                     {post.tags.length > 0 && (
-                      <span className="text-[10px] text-gray-400">
+                      <span className="text-[10px] text-gray-400 dark:text-gray-500">
                         {post.tags.slice(0, 2).map(tg => `#${tg}`).join(' ')}
                         {post.tags.length > 2 && ' …'}
                       </span>
@@ -526,7 +526,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
                   </div>
                   <p className="text-sm font-medium truncate">{post.title}</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[11px] text-gray-400 font-mono">{post.date}</span>
+                    <span className="text-[11px] text-gray-400 dark:text-gray-500 font-mono">{post.date}</span>
                   </div>
                 </div>
               ))}
@@ -546,7 +546,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
               className={`text-sm px-4 py-3 border-b-2 transition-colors
                 ${editTab === 'edit'
                   ? 'border-green-500 text-green-600 dark:text-green-400 font-medium'
-                  : 'border-transparent text-gray-400 hover:text-gray-600'
+                  : 'border-transparent text-gray-400 dark:text-gray-500 hover:text-gray-600'
                 }`}
             >
               {t.editTab}
@@ -556,7 +556,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
               className={`text-sm px-4 py-3 border-b-2 transition-colors
                 ${editTab === 'preview'
                   ? 'border-green-500 text-green-600 dark:text-green-400 font-medium'
-                  : 'border-transparent text-gray-400 hover:text-gray-600'
+                  : 'border-transparent text-gray-400 dark:text-gray-500 hover:text-gray-600'
                 }`}
             >
               {t.previewTab}
@@ -680,7 +680,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
             </form>
           ) : !selectedSlug && !form.title ? (
             /* 空状态 */
-            <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+            <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-500 text-sm">
               {t.noSelection}
             </div>
           ) : editTab === 'edit' ? (
@@ -711,7 +711,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
                 </div>
               </div>
 
-              <p className="text-[11px] text-gray-400 -mt-2">{t.dateHint}</p>
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 -mt-2">{t.dateHint}</p>
 
               {/* 分类 & 重要性 同行（仅事件模式） */}
               {mode === 'events' && (
@@ -727,7 +727,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
                           className={`text-[11px] px-2 py-1 rounded-full transition-colors border
                             ${form.category === cat
                               ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
-                              : 'border-gray-300 dark:border-gray-700 text-gray-500 hover:border-gray-400'
+                              : 'border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-400'
                             }`}
                         >
                           {cat}
@@ -742,7 +742,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
                       onChange={(e) => update('importance', parseInt(e.target.value, 10))}
                       className="w-full accent-green-500"
                     />
-                    <div className="flex justify-between text-[10px] text-gray-400">
+                    <div className="flex justify-between text-[10px] text-gray-400 dark:text-gray-500">
                       <span>{t.importanceMin}</span>
                       <span>{t.importanceMax}</span>
                     </div>
@@ -777,7 +777,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
               </div>
 
               {/* 草稿开关 */}
-              <label className="flex items-center gap-2 cursor-pointer text-xs text-gray-500">
+              <label className="flex items-center gap-2 cursor-pointer text-xs text-gray-500 dark:text-gray-400">
                 <input
                   type="checkbox"
                   checked={form.draft}
@@ -805,11 +805,11 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
                     ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
                 >
                   {uploading ? (
-                    <span className="text-xs text-gray-500">{uploadMsg}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">{uploadMsg}</span>
                   ) : uploadMsg ? (
                     <span className="text-xs text-red-500">{uploadMsg}</span>
                   ) : (
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-gray-400 dark:text-gray-500">
                       {t.imageUpload} — {t.imageDrop}
                     </span>
                   )}
@@ -863,8 +863,8 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
                   ) : (
                     <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 px-2 py-0.5 rounded-full">{t.articleBadge}</span>
                   )}
-                  <span className="text-sm text-gray-500 font-mono">{form.date}</span>
-                  {mode === 'events' && form.location && <span className="text-sm text-gray-400">📍 {form.location}</span>}
+                  <span className="text-sm text-gray-500 dark:text-gray-400 font-mono">{form.date}</span>
+                  {mode === 'events' && form.location && <span className="text-sm text-gray-400 dark:text-gray-500">📍 {form.location}</span>}
                   {mode === 'events' && (
                     <span className="text-yellow-500 text-sm">{'★'.repeat(form.importance)}{'☆'.repeat(5 - form.importance)}</span>
                   )}
@@ -878,7 +878,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
                 {form.tags && (
                   <div className="flex gap-1 mt-2 flex-wrap">
                     {form.tags.split(/[,，]/).map((tg) => tg.trim()).filter(Boolean).map((tag) => (
-                      <span key={tag} className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">#{tag}</span>
+                      <span key={tag} className="text-xs text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">#{tag}</span>
                     ))}
                   </div>
                 )}
@@ -899,7 +899,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setDeleteTarget(null)}>
           <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-xl max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold mb-2">{t.deleteTitle}</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-400 dark:text-gray-500 mb-4">
               {t.deleteConfirm.replace('{title}', deleteTarget.title)}
             </p>
             <div className="flex gap-3 justify-end">
