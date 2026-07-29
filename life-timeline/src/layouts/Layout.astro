@@ -37,6 +37,7 @@ const { title, description } = Astro.props;
         <a href={to('/')} class="font-bold text-lg hover:opacity-70 transition-opacity">{t.nav.home}</a>
         <a href={to('/timeline')} class="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-gray-300 transition-colors">{t.nav.timeline}</a>
         <a href={to('/blog')} class="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-gray-300 transition-colors">{t.nav.blog}</a>
+        <a href={to('/about')} class="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-gray-300 transition-colors">{t.nav.about}</a>
         <div class="flex-1" />
         {import.meta.env.DEV && (
           <a href={to('/admin')} class="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-gray-300 transition-colors">{t.nav.admin}</a>

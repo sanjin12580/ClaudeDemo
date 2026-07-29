@@ -317,6 +317,68 @@ ${content || '（待补充）'}
           }
         });
       });
+
+      // === 保存个人档案 ===
+      server.middlewares.use('/api/write-profile', (req, res) => {
+        if (req.method !== 'POST') {
+          res.statusCode = 405;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: '仅支持 POST 方法' }));
+          return;
+        }
+
+        readBody(req).then((body) => {
+          try {
+            const data = JSON.parse(body);
+            const { name, tagline, avatar, birthDate, skills, shortGoal, longGoal } = data;
+
+            if (!name || !birthDate) {
+              res.statusCode = 400;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: '缺少必填字段：name、birthDate' }));
+              return;
+            }
+
+            const profileDir = path.resolve(process.cwd(), 'src', 'content', 'profile');
+            if (!fs.existsSync(profileDir)) {
+              fs.mkdirSync(profileDir, { recursive: true });
+            }
+
+            const skillsLine = skills && skills.length > 0
+              ? `skills: [${skills.map((s: string) => s.trim()).filter(Boolean).map((s: string) => `"${s}"`).join(', ')}]`
+              : 'skills: []';
+
+            const fileContent = `---
+name: "${name}"
+tagline: "${tagline || ''}"
+avatar: "${avatar || ''}"
+birthDate: "${birthDate}"
+${skillsLine}
+shortGoal: "${shortGoal || ''}"
+longGoal: "${longGoal || ''}"
+---
+
+关于我的一些事...
+`;
+
+            const filePath = path.join(profileDir, 'about.md');
+            fs.writeFileSync(filePath, fileContent, 'utf-8');
+
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+              success: true,
+              path: path.relative(process.cwd(), filePath),
+            }));
+          } catch (err) {
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+              error: '保存失败',
+              detail: err instanceof Error ? err.message : String(err),
+            }));
+          }
+        });
+      });
     },
   };
 }

@@ -1,0 +1,36 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ProfileCard from '../components/ProfileCard';
+import RelationGraph from '../components/RelationGraph';
+import { loadProfile } from '../lib/parseProfile';
+import { t } from '../lib/i18n';
+import type { RelationsData } from '../lib/types';
+
+const profile = await loadProfile();
+
+// 用 Vite 的 import.meta.glob 在服务端加载 JSON
+const relationsModules = import.meta.glob<{ default: RelationsData }>(
+  '../data/relations.json',
+  { eager: true }
+);
+const relationsKey = '../data/relations.json';
+const relations = relationsModules[relationsKey]?.default ?? { people: [] };
+
+if (!profile) {
+  return new Response('档案未配置，请在管理后台创建个人档案。', { status: 404 });
+}
+
+---
+
+<Layout title={profile.name} description={profile.tagline}>
+  <div class="space-y-10">
+    <ProfileCard profile={profile} client:load />
+
+    <!-- 关系图谱分隔 -->
+    <div class="pt-6 border-t border-gray-200 dark:border-gray-800">
+      <h2 class="text-xl font-bold mb-2">🕸️ {t.relations.title}</h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">{t.relations.description}</p>
+      <RelationGraph people={relations.people} client:load />
+    </div>
+  </div>
+</Layout>

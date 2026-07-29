@@ -1,11 +1,11 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
-import type { EventMeta, PostMeta, Category } from '../lib/types';
+import type { EventMeta, PostMeta, Profile, Category } from '../lib/types';
 import { CATEGORY_COLORS } from '../lib/types';
 import { useI18n } from '../lib/i18n';
 
 const CATEGORIES: Category[] = ['教育', '工作', '旅行', '健康', '关系', '项目', '其他'];
 
-type AdminMode = 'events' | 'posts';
+type AdminMode = 'events' | 'posts' | 'profile';
 
 interface FormData {
   date: string;
@@ -32,6 +32,7 @@ const EMPTY_FORM: FormData = {
 interface Props {
   events: EventMeta[];
   posts: PostMeta[];
+  profile: Profile | null;
 }
 
 // ============================================================
@@ -60,7 +61,7 @@ function renderMarkdown(text: string): string {
 // ============================================================
 // 主组件
 // ============================================================
-export default function AdminPanel({ events: initialEvents, posts: initialPosts }: Props) {
+export default function AdminPanel({ events: initialEvents, posts: initialPosts, profile: initialProfile }: Props) {
   const { admin: t } = useI18n();
 
   // 模式切换
@@ -70,6 +71,17 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts 
   const [events, setEvents] = useState<EventMeta[]>(initialEvents);
   // 文章列表
   const [posts, setPosts] = useState<PostMeta[]>(initialPosts);
+
+  // 档案表单
+  const [profileForm, setProfileForm] = useState({
+    name: initialProfile?.name ?? '',
+    tagline: initialProfile?.tagline ?? '',
+    avatar: initialProfile?.avatar ?? '',
+    birthDate: initialProfile?.birthDate ?? '',
+    skills: initialProfile?.skills?.join(', ') ?? '',
+    shortGoal: initialProfile?.shortGoal ?? '',
+    longGoal: initialProfile?.longGoal ?? '',
+  });
 
   // 列表筛选
   const [filterCategory, setFilterCategory] = useState<string>('全部');
@@ -295,6 +307,45 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts 
     }
   }
 
+  // ========== 档案提交 ==========
+  async function handleProfileSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!profileForm.name || !profileForm.birthDate) {
+      setStatus('error');
+      setMessage(t.validationError);
+      return;
+    }
+    setStatus('saving');
+    setMessage('');
+    try {
+      const resp = await fetch('/api/write-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: profileForm.name,
+          tagline: profileForm.tagline,
+          avatar: profileForm.avatar,
+          birthDate: profileForm.birthDate,
+          skills: profileForm.skills.split(/[,，]/).map((s) => s.trim()).filter(Boolean),
+          shortGoal: profileForm.shortGoal,
+          longGoal: profileForm.longGoal,
+        }),
+      });
+      const data = await resp.json();
+      if (resp.ok && data.success) {
+        setStatus('success');
+        setMessage(t.saved(data.path));
+        setTimeout(() => window.location.reload(), 800);
+      } else {
+        setStatus('error');
+        setMessage(data.error || t.saveFailed);
+      }
+    } catch (err) {
+      setStatus('error');
+      setMessage(t.networkError(err instanceof Error ? err.message : t.unknownError));
+    }
+  }
+
   // ========== 删除 ==========
   async function confirmDelete() {
     if (!deleteTarget) return;
@@ -356,9 +407,20 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts 
           >
             {t.tabPosts}
           </button>
+          <button
+            onClick={() => switchMode('profile')}
+            className={`flex-1 text-sm px-4 py-3 transition-colors font-medium
+              ${mode === 'profile'
+                ? 'text-green-600 dark:text-green-400 border-b-2 border-green-500 bg-white dark:bg-gray-900'
+                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 border-b-2 border-transparent'
+              }`}
+          >
+            {t.tabProfile}
+          </button>
         </div>
 
-        {/* 列表头部 */}
+        {/* 列表头部 — 仅在事件/文章模式下显示 */}
+        {mode !== 'profile' && (<>
         <div className="p-4 border-b border-gray-200 dark:border-gray-800 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-sm">{mode === 'events' ? t.eventList : t.postList}</h2>
@@ -471,6 +533,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts 
             </div>
           )}
         </div>
+        </>)}
       </aside>
 
       {/* ========== 右侧：编辑面板 ========== */}
@@ -521,7 +584,101 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts 
 
         {/* 内容区 */}
         <div className="flex-1 overflow-y-auto p-6">
-          {!selectedSlug && !form.title ? (
+          {mode === 'profile' ? (
+            /* ======== 档案编辑表单 ======== */
+            <form onSubmit={handleProfileSubmit} className="space-y-4 max-w-xl">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium mb-1">{t.profileName}</label>
+                  <input
+                    type="text"
+                    value={profileForm.name}
+                    onChange={(e) => setProfileForm((p) => ({ ...p, name: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">{t.profileTagline}</label>
+                  <input
+                    type="text"
+                    value={profileForm.tagline}
+                    onChange={(e) => setProfileForm((p) => ({ ...p, tagline: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium mb-1">{t.profileAvatar}</label>
+                  <input
+                    type="text"
+                    value={profileForm.avatar}
+                    onChange={(e) => setProfileForm((p) => ({ ...p, avatar: e.target.value }))}
+                    placeholder="/images/avatar.jpg"
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">{t.profileBirthDate}</label>
+                  <input
+                    type="date"
+                    value={profileForm.birthDate}
+                    onChange={(e) => setProfileForm((p) => ({ ...p, birthDate: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium mb-1">{t.profileSkills}</label>
+                <input
+                  type="text"
+                  value={profileForm.skills}
+                  onChange={(e) => setProfileForm((p) => ({ ...p, skills: e.target.value }))}
+                  placeholder={t.tagsPlaceholder}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium mb-1">{t.profileShortGoal}</label>
+                <input
+                  type="text"
+                  value={profileForm.shortGoal}
+                  onChange={(e) => setProfileForm((p) => ({ ...p, shortGoal: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium mb-1">{t.profileLongGoal}</label>
+                <input
+                  type="text"
+                  value={profileForm.longGoal}
+                  onChange={(e) => setProfileForm((p) => ({ ...p, longGoal: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                />
+              </div>
+
+              {/* 提交 */}
+              <div className="flex items-center gap-3 pt-4">
+                <button
+                  type="submit"
+                  disabled={status === 'saving'}
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {status === 'saving' ? t.savingBtn : t.profileSave}
+                </button>
+
+                {message && (
+                  <span className={`text-xs ${status === 'success' ? 'text-green-600' : 'text-red-500'}`}>
+                    {message}
+                  </span>
+                )}
+              </div>
+            </form>
+          ) : !selectedSlug && !form.title ? (
             /* 空状态 */
             <div className="flex items-center justify-center h-full text-gray-400 text-sm">
               {t.noSelection}

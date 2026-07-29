@@ -18,6 +18,7 @@ export const zh = {
     home: '人生时间线',
     timeline: '时间线',
     blog: '博客',
+    about: '关于',
     admin: '⚙️ 管理',
   },
   home: {
@@ -94,6 +95,16 @@ export const zh = {
     unknownError: '未知错误',
     cancelBtn: '取消',
     deleteBtn: '删除',
+    tabProfile: '档案',
+    profileDir: 'src/content/profile/',
+    profileName: '姓名 *',
+    profileTagline: '一句话简介',
+    profileAvatar: '头像 URL',
+    profileBirthDate: '出生日期 *',
+    profileSkills: '技能标签（逗号分隔）',
+    profileShortGoal: '短期目标',
+    profileLongGoal: '长期目标',
+    profileSave: '保存档案',
     // 图片上传
     imageUpload: '📷 上传图片',
     imageDrop: '拖拽图片到此处，或点击选择',
@@ -161,6 +172,31 @@ export const zh = {
     seconds: '秒',
     lifePercent: '人生进度',
     zodiac: '属',
+  },
+  /** 个人档案 */
+  about: {
+    birthday: '出生日期',
+    yearsOld: '岁',
+    shortGoalTitle: '短期目标',
+    longGoalTitle: '长期目标',
+    notSet: '未设置',
+    skills: '技能',
+  },
+  /** 关系图谱 */
+  relations: {
+    title: '关系图谱',
+    description: '生命中重要的人',
+    storiesTitle: '📖 共同经历',
+    relatedPeople: '🔗 关联人物',
+    家人: '家人',
+    爱人: '爱人',
+    挚友: '挚友',
+    导师: '导师',
+    同事: '同事',
+    同学: '同学',
+    萍水相逢: '萍水相逢',
+    观众: '观众',
+    其他: '其他',
   },
 } as const;
 
