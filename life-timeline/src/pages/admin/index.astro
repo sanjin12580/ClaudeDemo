@@ -4,11 +4,14 @@ import AdminPanel from '../../components/AdminPanel';
 import { loadEvents } from '../../lib/parseEvents';
 import { loadPosts } from '../../lib/parsePosts';
 import { loadProfile } from '../../lib/parseProfile';
+import { loadGoals } from '../../lib/parseGoals';
 import { t } from '../../lib/i18n';
 
 const allEvents = await loadEvents(true);
 const allPosts = await loadPosts(true);
 const profile = await loadProfile();
+const goalData = await loadGoals();
+const allGoals = [...goalData.short, ...goalData.long];
 ---
 
 <Layout title={t.admin.heading} description={t.admin.description}>
@@ -19,13 +22,13 @@ const profile = await loadProfile();
         {t.admin.description}{t.admin.fileSavedTo}
         <code class="text-xs bg-gray-50 dark:bg-gray-950 px-1.5 py-0.5 rounded">{t.admin.dir}</code> {t.admin.and}
         <code class="text-xs bg-gray-50 dark:bg-gray-950 px-1.5 py-0.5 rounded">{t.admin.blogDir}</code> {t.admin.and}
-        <code class="text-xs bg-gray-50 dark:bg-gray-950 px-1.5 py-0.5 rounded">{t.admin.profileDir}</code> 目录。
+        <code class="text-xs bg-gray-50 dark:bg-gray-950 px-1.5 py-0.5 rounded">{t.admin.profileDir}</code> 目录，目标保存到 <code class="text-xs bg-gray-50 dark:bg-gray-950 px-1.5 py-0.5 rounded">src/data/goals.json</code>。
       </p>
       <div class="mt-3 px-3 py-2 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg text-sm text-yellow-500-content/80">
         ⚠️ {t.admin.warning} (<code>{t.admin.devOnly}</code>) {t.admin.warningSuffix}
       </div>
     </div>
 
-    <AdminPanel events={allEvents} posts={allPosts} profile={profile} client:load />
+    <AdminPanel events={allEvents} posts={allPosts} profile={profile} goals={allGoals} client:load />
   </div>
 </Layout>

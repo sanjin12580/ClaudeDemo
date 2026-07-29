@@ -95,6 +95,24 @@ export interface RelationsData {
   people: Person[];
 }
 
+/** 人生目标 */
+export interface Goal {
+  id: string;               // 唯一标识，如 "g-001"
+  title: string;            // 目标标题
+  description: string;      // 备注
+  progress: number;         // 0-100
+  category: 'short' | 'long';
+  relatedEvents: string[];  // 关联的事件 slug
+  status: 'active' | 'completed' | 'paused';
+  createdAt: string;        // ISO 日期
+}
+
+/** 目标看板数据 */
+export interface GoalBoardData {
+  short: Goal[];
+  long: Goal[];
+}
+
 /** 个人资料 */
 export interface Profile {
   name: string;

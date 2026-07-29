@@ -88,19 +88,63 @@ export default function LifeCounter({ birthDate }: Props) {
         </div>
 
         {/* 进度条 */}
-        <div className="mt-4">
-          <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500 mb-1.5">
-            <span>0</span>
-            <span>{t.lifePercent}</span>
-            <span>{expectedYears} 岁</span>
-          </div>
-          <div className="w-full h-2 bg-gray-50 dark:bg-gray-950 rounded-full overflow-hidden">
+        <div className="mt-5 space-y-1.5">
+          {/* 进度条本体 */}
+          <div className="w-full h-8 bg-gray-100 dark:bg-gray-800 rounded-full shadow-inner relative">
             <motion.div
-              className="h-full bg-gradient-to-r from-primary to-primary/60 rounded-full"
+              className="h-full bg-gradient-to-r from-green-400 via-green-500 to-green-600 rounded-full overflow-hidden relative flex items-center justify-end min-w-0"
               initial={{ width: 0 }}
               animate={{ width: `${lifePercent}%` }}
               transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }}
-            />
+            >
+              {/* 进度条光泽 */}
+              <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent rounded-full" />
+              {/* 年龄/80 标签 */}
+              {lifePercent >= 15 && (
+                <span className="relative text-white text-xs font-bold font-mono tabular-nums pr-2 whitespace-nowrap">
+                  {years.toFixed(1)} / {expectedYears} 岁
+                </span>
+              )}
+            </motion.div>
+
+            {/* 1/e 分割线 + 悬停提示 */}
+            <div
+              className="group absolute top-0 bottom-0 z-10"
+              style={{ left: `${(1 / Math.E) * 100}%` }}
+            >
+              {/* 可悬停的触发区域 */}
+              <div className="absolute -top-1 -bottom-1 -translate-x-1/2 w-3 cursor-default" />
+              {/* 竖线 */}
+              <div className="absolute top-0 bottom-0 -translate-x-1/2 w-0.5 bg-amber-500 dark:bg-amber-400" />
+              {/* 悬停显示的 1/e 标签 */}
+              <span className="absolute -top-5 -translate-x-1/2 text-[10px] font-mono text-amber-600 dark:text-amber-400 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                1/e
+              </span>
+              {/* 始终显示的对应年龄 */}
+              <span className="absolute -bottom-4 -translate-x-1/2 text-[10px] text-amber-500/50 dark:text-amber-400/50 whitespace-nowrap">
+                {(expectedYears / Math.E).toFixed(1)} 岁
+              </span>
+            </div>
+
+            {/* 当进度条太短时，年龄标签显示在进度条外侧 */}
+            {lifePercent < 15 && (
+              <span className="absolute top-1/2 -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400 font-mono ml-2"
+                style={{ left: `${lifePercent}%` }}>
+                {years.toFixed(1)} / {expectedYears} 岁
+              </span>
+            )}
+          </div>
+
+          {/* 百分比标签 — 跟随进度条右端 */}
+          <div className="relative w-full h-5">
+            <motion.div
+              className="absolute -translate-x-1/2 text-xs font-bold text-green-600 dark:text-green-400 font-mono tabular-nums whitespace-nowrap"
+              initial={{ left: 0 }}
+              animate={{ left: `${lifePercent}%` }}
+              transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }}
+            >
+              {lifePercent.toFixed(1)}%
+            </motion.div>
           </div>
         </div>
       </div>

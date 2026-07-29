@@ -2,14 +2,22 @@
 import Layout from '../layouts/Layout.astro';
 import LifeGrid from '../components/LifeGrid';
 import LifeCounter from '../components/LifeCounter';
+import GoalBoard from '../components/GoalBoard';
 import { loadEvents, buildGridData } from '../lib/parseEvents';
+import { loadProfile } from '../lib/parseProfile';
+import { loadGoals } from '../lib/parseGoals';
 import { t } from '../lib/i18n';
 import { to } from '../lib/base';
 import { siteConfig } from '../site.config';
 
 const events = await loadEvents();
+const profile = await loadProfile();
+const goalData = await loadGoals();
 const gridData = buildGridData(events, siteConfig.birthYear);
 const totalEvents = events.length;
+
+/** LifeCounter 优先使用个人档案的出生日期，回退到站点配置 */
+const birthDate = profile?.birthDate ?? siteConfig.birthDate;
 ---
 
 <Layout title={t.home.heading}>
@@ -19,7 +27,9 @@ const totalEvents = events.length;
       <p class="mt-2 text-gray-500 dark:text-gray-400" set:html={t.home.summary(gridData.startYear, gridData.endYear, totalEvents)} />
     </div>
 
-    <LifeCounter birthDate={siteConfig.birthDate} client:load />
+    <LifeCounter birthDate={birthDate} client:load />
+
+    <GoalBoard data={goalData} client:load />
 
     <div class="card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm">
       <div class="card-body">

@@ -1,11 +1,11 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
-import type { EventMeta, PostMeta, Profile, Category } from '../lib/types';
+import type { EventMeta, PostMeta, Profile, Goal, Category } from '../lib/types';
 import { CATEGORY_COLORS } from '../lib/types';
 import { useI18n } from '../lib/i18n';
 
 const CATEGORIES: Category[] = ['教育', '工作', '旅行', '健康', '关系', '项目', '其他'];
 
-type AdminMode = 'events' | 'posts' | 'profile';
+type AdminMode = 'events' | 'posts' | 'profile' | 'goals';
 
 interface FormData {
   date: string;
@@ -33,6 +33,7 @@ interface Props {
   events: EventMeta[];
   posts: PostMeta[];
   profile: Profile | null;
+  goals: Goal[];
 }
 
 // ============================================================
@@ -61,7 +62,7 @@ function renderMarkdown(text: string): string {
 // ============================================================
 // 主组件
 // ============================================================
-export default function AdminPanel({ events: initialEvents, posts: initialPosts, profile: initialProfile }: Props) {
+export default function AdminPanel({ events: initialEvents, posts: initialPosts, profile: initialProfile, goals: initialGoals }: Props) {
   const { admin: t } = useI18n();
 
   // 模式切换
@@ -71,6 +72,8 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
   const [events, setEvents] = useState<EventMeta[]>(initialEvents);
   // 文章列表
   const [posts, setPosts] = useState<PostMeta[]>(initialPosts);
+  // 目标列表
+  const [goals, setGoals] = useState<Goal[]>(initialGoals);
 
   // 档案表单
   const [profileForm, setProfileForm] = useState({
@@ -82,6 +85,18 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
     shortGoal: initialProfile?.shortGoal ?? '',
     longGoal: initialProfile?.longGoal ?? '',
   });
+
+  // 目标表单
+  const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
+  const EMPTY_GOAL_FORM = {
+    title: '',
+    description: '',
+    progress: 0,
+    category: 'short' as 'short' | 'long',
+    status: 'active' as 'active' | 'completed' | 'paused',
+    relatedEvents: '',
+  };
+  const [goalForm, setGoalForm] = useState(EMPTY_GOAL_FORM);
 
   // 列表筛选
   const [filterCategory, setFilterCategory] = useState<string>('全部');
@@ -243,7 +258,9 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
   function switchMode(newMode: AdminMode) {
     setMode(newMode);
     setSelectedSlug(null);
+    setSelectedGoalId(null);
     setForm(EMPTY_FORM);
+    setGoalForm(EMPTY_GOAL_FORM);
     setEditTab('edit');
     setStatus('idle');
     setMessage('');
@@ -346,6 +363,103 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
     }
   }
 
+  // ========== 目标操作 ==========
+  const selectGoal = useCallback((goal: Goal) => {
+    setSelectedGoalId(goal.id);
+    setGoalForm({
+      title: goal.title,
+      description: goal.description,
+      progress: goal.progress,
+      category: goal.category,
+      status: goal.status,
+      relatedEvents: goal.relatedEvents.join(', '),
+    });
+    setStatus('idle');
+    setMessage('');
+  }, []);
+
+  const newGoal = useCallback(() => {
+    setSelectedGoalId(null);
+    setGoalForm(EMPTY_GOAL_FORM);
+    setStatus('idle');
+    setMessage('');
+  }, []);
+
+  async function handleGoalSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!goalForm.title) {
+      setStatus('error');
+      setMessage(t.validationError);
+      return;
+    }
+    setStatus('saving');
+    setMessage('');
+
+    const newGoal: Goal = {
+      id: selectedGoalId || `g-${Date.now()}`,
+      title: goalForm.title,
+      description: goalForm.description,
+      progress: goalForm.progress,
+      category: goalForm.category,
+      status: goalForm.status,
+      relatedEvents: goalForm.relatedEvents.split(/[,，]/).map((s) => s.trim()).filter(Boolean),
+      createdAt: selectedGoalId
+        ? (goals.find((g) => g.id === selectedGoalId)?.createdAt || new Date().toISOString().slice(0, 10))
+        : new Date().toISOString().slice(0, 10),
+    };
+
+    const updatedGoals = selectedGoalId
+      ? goals.map((g) => (g.id === selectedGoalId ? newGoal : g))
+      : [...goals, newGoal];
+
+    try {
+      const resp = await fetch('/api/write-goals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goals: updatedGoals }),
+      });
+      const data = await resp.json();
+      if (resp.ok && data.success) {
+        setGoals(updatedGoals);
+        setStatus('success');
+        setMessage(t.goalSaved(data.path));
+        setTimeout(() => window.location.reload(), 800);
+      } else {
+        setStatus('error');
+        setMessage(data.error || t.saveFailed);
+      }
+    } catch (err) {
+      setStatus('error');
+      setMessage(t.networkError(err instanceof Error ? err.message : t.unknownError));
+    }
+  }
+
+  async function handleGoalDelete() {
+    if (!selectedGoalId) return;
+    const updatedGoals = goals.filter((g) => g.id !== selectedGoalId);
+    try {
+      const resp = await fetch('/api/write-goals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goals: updatedGoals }),
+      });
+      const data = await resp.json();
+      if (resp.ok && data.success) {
+        setGoals(updatedGoals);
+        setSelectedGoalId(null);
+        setGoalForm(EMPTY_GOAL_FORM);
+        setMessage(t.deleted);
+        setStatus('success');
+      } else {
+        setMessage(data.error || t.deleteFailed);
+        setStatus('error');
+      }
+    } catch (err) {
+      setMessage(t.networkError(err instanceof Error ? err.message : t.unknownError));
+      setStatus('error');
+    }
+  }
+
   // ========== 删除 ==========
   async function confirmDelete() {
     if (!deleteTarget) return;
@@ -417,10 +531,20 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
           >
             {t.tabProfile}
           </button>
+          <button
+            onClick={() => switchMode('goals')}
+            className={`flex-1 text-sm px-4 py-3 transition-colors font-medium
+              ${mode === 'goals'
+                ? 'text-green-600 dark:text-green-400 border-b-2 border-green-500 bg-white dark:bg-gray-900'
+                : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 border-b-2 border-transparent'
+              }`}
+          >
+            {t.tabGoals}
+          </button>
         </div>
 
         {/* 列表头部 — 仅在事件/文章模式下显示 */}
-        {mode !== 'profile' && (<>
+        {mode !== 'profile' && mode !== 'goals' && (<>
         <div className="p-4 border-b border-gray-200 dark:border-gray-800 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-sm">{mode === 'events' ? t.eventList : t.postList}</h2>
@@ -534,12 +658,64 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
           )}
         </div>
         </>)}
+
+        {/* 目标列表 */}
+        {mode === 'goals' && (
+          <>
+            <div className="p-4 border-b border-gray-200 dark:border-gray-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="font-semibold text-sm">{t.tabGoals}</h2>
+                <span className="text-xs text-gray-400 dark:text-gray-500">{goals.length}</span>
+              </div>
+              <button
+                onClick={newGoal}
+                className="w-full text-xs px-3 py-2 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700 transition-colors"
+              >
+                {t.goalNew}
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              {goals.length === 0 ? (
+                <div className="text-center py-12 text-xs text-gray-400 dark:text-gray-500">{t.goalEmpty}</div>
+              ) : (
+                <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                  {goals.map((goal) => {
+                    const statusCls = goal.status === 'completed' ? 'badge-success' : goal.status === 'paused' ? 'badge-ghost' : 'badge-info';
+                    const statusLabel = goal.status === 'completed' ? t.goalStatusCompleted : goal.status === 'paused' ? t.goalStatusPaused : t.goalStatusActive;
+                    return (
+                      <div
+                        key={goal.id}
+                        onClick={() => selectGoal(goal)}
+                        className={`p-3 cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-800
+                          ${selectedGoalId === goal.id ? 'bg-green-50 dark:bg-green-950 border-l-2 border-green-500' : 'border-l-2 border-transparent'}`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`badge badge-xs ${statusCls}`}>{statusLabel}</span>
+                          <span className="text-[10px] text-gray-400 dark:text-gray-500">{goal.category === 'short' ? t.goalCategoryShort : t.goalCategoryLong}</span>
+                        </div>
+                        <p className="text-sm font-medium truncate">{goal.title}</p>
+                        <div className="mt-1.5 w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${goal.status === 'completed' ? 'bg-green-500' : goal.status === 'paused' ? 'bg-gray-400' : 'bg-green-500'}`}
+                            style={{ width: `${goal.progress}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 block text-right">{goal.progress}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </aside>
 
       {/* ========== 右侧：编辑面板 ========== */}
       <main className="flex-1 flex flex-col min-w-0">
         {/* Tab 切换 */}
-        {selectedSlug || (mode === 'events' ? !initialEvents.some((e) => e.slug === selectedSlug) : !initialPosts.some((p) => p.slug === selectedSlug)) ? (
+        {mode !== 'profile' && mode !== 'goals' && (selectedSlug || (mode === 'events' ? !initialEvents.some((e) => e.slug === selectedSlug) : !initialPosts.some((p) => p.slug === selectedSlug))) ? (
           <div className="flex items-center border-b border-gray-200 dark:border-gray-800 px-4">
             <button
               onClick={() => setEditTab('edit')}
@@ -584,7 +760,111 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
 
         {/* 内容区 */}
         <div className="flex-1 overflow-y-auto p-6">
-          {mode === 'profile' ? (
+          {mode === 'goals' ? (
+            /* ======== 目标编辑表单 ======== */
+            <form onSubmit={handleGoalSubmit} className="space-y-4 max-w-xl">
+              <div>
+                <label className="block text-xs font-medium mb-1">{t.goalTitle}</label>
+                <input
+                  type="text"
+                  value={goalForm.title}
+                  onChange={(e) => setGoalForm((p) => ({ ...p, title: e.target.value }))}
+                  placeholder="如：完成人生时间线项目"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium mb-1">{t.goalDesc}</label>
+                <input
+                  type="text"
+                  value={goalForm.description}
+                  onChange={(e) => setGoalForm((p) => ({ ...p, description: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium mb-1">{t.goalProgress}: {goalForm.progress}%</label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={goalForm.progress}
+                    onChange={(e) => setGoalForm((p) => ({ ...p, progress: Number(e.target.value) }))}
+                    className="w-full accent-green-600"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">{t.goalCategory}</label>
+                  <select
+                    value={goalForm.category}
+                    onChange={(e) => setGoalForm((p) => ({ ...p, category: e.target.value as 'short' | 'long' }))}
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  >
+                    <option value="short">{t.goalCategoryShort}</option>
+                    <option value="long">{t.goalCategoryLong}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium mb-1">{t.goalStatus}</label>
+                <select
+                  value={goalForm.status}
+                  onChange={(e) => setGoalForm((p) => ({ ...p, status: e.target.value as 'active' | 'completed' | 'paused' }))}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                >
+                  <option value="active">{t.goalStatusActive}</option>
+                  <option value="completed">{t.goalStatusCompleted}</option>
+                  <option value="paused">{t.goalStatusPaused}</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium mb-1">{t.goalRelated}</label>
+                <input
+                  type="text"
+                  value={goalForm.relatedEvents}
+                  onChange={(e) => setGoalForm((p) => ({ ...p, relatedEvents: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                />
+              </div>
+
+              {/* 提交 */}
+              <div className="flex items-center gap-3 pt-4">
+                <button
+                  type="submit"
+                  disabled={status === 'saving'}
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {status === 'saving' ? t.savingBtn : t.profileSave}
+                </button>
+
+                {selectedGoalId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const g = goals.find((g) => g.id === selectedGoalId);
+                      if (g && confirm(t.goalDeleteConfirm.replace('{title}', g.title))) {
+                        handleGoalDelete();
+                      }
+                    }}
+                    className="text-xs text-red-400 hover:text-red-600 transition-colors px-2 py-1"
+                  >
+                    🗑️ {t.deleteBtn}
+                  </button>
+                )}
+
+                {message && (
+                  <span className={`text-xs ${status === 'success' ? 'text-green-600' : 'text-red-500'}`}>
+                    {message}
+                  </span>
+                )}
+              </div>
+            </form>
+          ) : mode === 'profile' ? (
             /* ======== 档案编辑表单 ======== */
             <form onSubmit={handleProfileSubmit} className="space-y-4 max-w-xl">
               <div className="grid grid-cols-2 gap-4">
