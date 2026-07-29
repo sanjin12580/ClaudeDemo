@@ -34,10 +34,13 @@ export default function EventCard({ event }: Props) {
   const catColor = CATEGORY_COLORS[event.category] || CATEGORY_COLORS['其他'];
 
   return (
-    <article
-      className="group border border-gray-200 dark:border-gray-800 rounded-xl p-5
+    <a
+      href={`/events/${event.slug}`}
+      className="group block border border-gray-200 dark:border-gray-800 rounded-xl p-5
                  hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-200
-                 hover:shadow-sm bg-white dark:bg-gray-900"
+                 hover:shadow-sm bg-white dark:bg-gray-900 cursor-pointer
+                 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2
+                 dark:focus:ring-offset-gray-950"
     >
       <div className="flex items-center gap-3 mb-3 flex-wrap">
         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${catColor}`}>
@@ -79,6 +82,6 @@ export default function EventCard({ event }: Props) {
           ))}
         </div>
       )}
-    </article>
+    </a>
   );
 }

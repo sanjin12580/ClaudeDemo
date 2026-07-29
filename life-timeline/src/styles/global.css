@@ -1,4 +1,8 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* 切换到 class-based 暗色模式，由 JS 控制 .dark 类 */
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* 自定义 CSS 变量 - 贡献图颜色主题 */
 :root {
@@ -14,4 +18,19 @@
 body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+}
+
+/* 主题切换过渡 */
+html {
+  transition: color 0.3s ease, background-color 0.3s ease;
+}
+html.transitioning,
+html.transitioning *,
+html.transitioning *::before,
+html.transitioning *::after {
+  transition: background-color 0.3s ease !important;
+  transition: color 0.3s ease !important;
+  transition: border-color 0.3s ease !important;
+  transition: fill 0.3s ease !important;
+  transition: stroke 0.3s ease !important;
 }

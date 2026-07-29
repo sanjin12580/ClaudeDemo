@@ -17,6 +17,7 @@ export const zh = {
   nav: {
     home: '人生时间线',
     timeline: '时间线',
+    admin: '⚙️ 管理',
   },
   home: {
     heading: '🟩 人生全貌',
@@ -90,6 +91,18 @@ export const zh = {
   },
   eventCard: {
     importance: (v: number) => `重要性: ${v}/5`,
+  },
+  eventDetail: {
+    back: '← 返回时间线',
+    prev: '← 上一篇',
+    next: '下一篇 →',
+    importance: (v: number) => `重要性: ${v}/5`,
+    notFound: '事件未找到',
+  },
+  theme: {
+    toggle: '切换主题',
+    toDark: '切换到暗色模式',
+    toLight: '切换到亮色模式',
   },
   categories: {
     all: '全部',
