@@ -127,8 +127,9 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
     setUploadMsg(t.imageUploading);
     try {
       const reader = new FileReader();
-      const dataUrl = await new Promise<string>((resolve) => {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
         reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('文件读取失败'));
         reader.readAsDataURL(file);
       });
 
@@ -274,7 +275,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
   }
 
   // ========== 提交 ==========
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!form.date || !form.title) {
       setStatus('error');
@@ -325,7 +326,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
   }
 
   // ========== 档案提交 ==========
-  async function handleProfileSubmit(e: React.FormEvent) {
+  async function handleProfileSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!profileForm.name || !profileForm.birthDate) {
       setStatus('error');
@@ -385,7 +386,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
     setMessage('');
   }, []);
 
-  async function handleGoalSubmit(e: React.FormEvent) {
+  async function handleGoalSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!goalForm.title) {
       setStatus('error');

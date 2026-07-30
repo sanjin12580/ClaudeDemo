@@ -2,7 +2,7 @@
 import { getCollection } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
 import { t } from '../../lib/i18n';
-import { to } from '../../lib/base';
+import { to, formatDate } from '../../lib/base';
 
 export async function getStaticPaths() {
   const entries = await getCollection('blog', ({ data }) => !data.draft);
@@ -22,11 +22,6 @@ if (!entry) {
 const { Content } = await entry.render();
 const { date, title, tags } = entry.data;
 
-function formatDate(dateStr: string): string {
-  const parts = dateStr.split('-');
-  if (parts.length === 3) return `${parts[0]} 年 ${parseInt(parts[1])} 月 ${parseInt(parts[2])} 日`;
-  return dateStr;
-}
 
 const allEntries = await getCollection('blog', ({ data }) => !data.draft);
 allEntries.sort((a, b) => b.data.date.localeCompare(a.data.date));

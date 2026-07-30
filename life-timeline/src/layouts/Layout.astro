@@ -23,13 +23,13 @@ const navLinks = [
 ---
 
 <!doctype html>
-<html lang="zh-CN" data-theme="emerald">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description || t.site.description} />
     <title>{title} — {t.site.title}</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href={to('/favicon.svg')} />
 
     <!-- 防止暗色模式闪烁：在页面渲染前读取 localStorage / 系统偏好 -->
     <script is:inline>
@@ -39,6 +39,8 @@ const navLinks = [
         if (isDark) {
           document.documentElement.classList.add('dark');
           document.documentElement.setAttribute('data-theme', 'dim');
+        } else {
+          document.documentElement.setAttribute('data-theme', 'emerald');
         }
       })();
     </script>

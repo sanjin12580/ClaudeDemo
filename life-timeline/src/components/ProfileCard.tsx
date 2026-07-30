@@ -1,5 +1,6 @@
 import type { Profile } from '../lib/types';
 import { useI18n } from '../lib/i18n';
+import { formatDate } from '../lib/base';
 
 interface Props {
   profile: Profile;
@@ -15,12 +16,6 @@ function calcAge(birthDate: string): number {
     age--;
   }
   return age;
-}
-
-/** 格式化日期 */
-function formatDate(dateStr: string): string {
-  const parts = dateStr.split('-');
-  return `${parts[0]} 年 ${parseInt(parts[1])} 月 ${parseInt(parts[2])} 日`;
 }
 
 export default function ProfileCard({ profile }: Props) {
@@ -82,7 +77,7 @@ export default function ProfileCard({ profile }: Props) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="card bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl shadow-sm">
           <div className="card-body p-5">
-            <h3 className="font-semibold text-yellow-500-content/80 mb-2">
+            <h3 className="font-semibold text-amber-600 dark:text-amber-400 mb-2">
               🎯 {t.shortGoalTitle}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">

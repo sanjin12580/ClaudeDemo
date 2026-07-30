@@ -2,6 +2,31 @@ import type { Plugin } from 'vite';
 import fs from 'node:fs';
 import path from 'node:path';
 
+// ============================================================
+// 安全工具函数
+// ============================================================
+
+/** 允许的图片扩展名白名单 */
+const ALLOWED_IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg']);
+
+/** 日期格式校验（YYYY / YYYY-MM / YYYY-MM-DD） */
+const DATE_REGEX = /^\d{4}(-\d{2}(-\d{2})?)?$/;
+
+/** 转义 YAML 字符串中的双引号和换行符，防止 YAML 注入 */
+function escapeYaml(str: string): string {
+  return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '');
+}
+
+/**
+ * 安全检查：确保解析后的绝对路径在允许的目录内
+ * 使用 startsWith + path.normalize 而非 String.includes，防止子串绕过
+ */
+function isPathWithin(baseDir: string, targetPath: string): boolean {
+  const normalizedBase = path.normalize(path.resolve(baseDir)) + path.sep;
+  const normalizedTarget = path.normalize(path.resolve(targetPath));
+  return normalizedTarget.startsWith(normalizedBase);
+}
+
 /**
  * Vite 插件：在开发模式下提供管理后台 API
  * - POST /api/write-event  创建事件
@@ -44,7 +69,15 @@ export function adminApiPlugin(): Plugin {
               return;
             }
 
-            const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+            // 安全：白名单校验扩展名，防止存储型 XSS
+            const rawExt = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+            if (!ALLOWED_IMAGE_EXTENSIONS.has(rawExt)) {
+              res.statusCode = 400;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: '不支持的图片格式，仅允许: ' + [...ALLOWED_IMAGE_EXTENSIONS].join(', ') }));
+              return;
+            }
+            const ext = rawExt;
             const base64Data = matches[2];
             const buffer = Buffer.from(base64Data, 'base64');
 
@@ -104,6 +137,14 @@ export function adminApiPlugin(): Plugin {
               return;
             }
 
+            // 安全：校验日期格式，防止路径注入
+            if (!DATE_REGEX.test(date)) {
+              res.statusCode = 400;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: '日期格式无效，必须为 YYYY、YYYY-MM 或 YYYY-MM-DD' }));
+              return;
+            }
+
             const slug = `${date}-${sanitizeFilename(title)}.md`;
             const year = date.slice(0, 4);
             const eventsDir = path.resolve(process.cwd(), 'src', 'content', 'events', year);
@@ -117,11 +158,11 @@ export function adminApiPlugin(): Plugin {
               : 'tags: []';
 
             const fileContent = `---
-date: "${date}"
-title: "${title}"
-category: "${category}"
+date: "${escapeYaml(date)}"
+title: "${escapeYaml(title)}"
+category: "${escapeYaml(category)}"
 ${tagsLine}
-importance: ${importance || 3}${location ? `\nlocation: "${location}"` : ''}
+importance: ${importance || 3}${location ? `\nlocation: "${escapeYaml(location)}"` : ''}
 ---
 
 ${content || '（待补充）'}
@@ -168,8 +209,9 @@ ${content || '（待补充）'}
             }
 
             const absolutePath = path.resolve(process.cwd(), filePath);
-            // 安全检查：确保只删除 events 目录下的 .md 文件
-            if (!absolutePath.includes(path.join('src', 'content', 'events')) || !absolutePath.endsWith('.md')) {
+            // 安全：使用规范化路径前缀检查，防止子串绕过
+            const eventsDir = path.resolve(process.cwd(), 'src', 'content', 'events');
+            if (!isPathWithin(eventsDir, absolutePath) || !absolutePath.endsWith('.md')) {
               res.statusCode = 403;
               res.setHeader('Content-Type', 'application/json');
               res.end(JSON.stringify({ error: '不允许删除该文件' }));
@@ -239,8 +281,8 @@ ${content || '（待补充）'}
             const draftLine = draft ? '\ndraft: true' : '';
 
             const fileContent = `---
-date: "${date}"
-title: "${title}"
+date: "${escapeYaml(date)}"
+title: "${escapeYaml(title)}"
 ${tagsLine}${draftLine}
 ---
 
@@ -288,9 +330,9 @@ ${content || '（待补充）'}
             }
 
             const absolutePath = path.resolve(process.cwd(), filePath);
-            // 安全检查：确保只删除 blog 目录下的 .md 文件
-            const blogDir = path.join('src', 'content', 'blog');
-            if (!absolutePath.includes(blogDir) || !absolutePath.endsWith('.md')) {
+            // 安全：使用规范化路径前缀检查，防止子串绕过
+            const blogDir = path.resolve(process.cwd(), 'src', 'content', 'blog');
+            if (!isPathWithin(blogDir, absolutePath) || !absolutePath.endsWith('.md')) {
               res.statusCode = 403;
               res.setHeader('Content-Type', 'application/json');
               res.end(JSON.stringify({ error: '不允许删除该文件' }));
@@ -350,13 +392,13 @@ ${content || '（待补充）'}
               : 'skills: []';
 
             const fileContent = `---
-name: "${name}"
-tagline: "${tagline || ''}"
-avatar: "${avatar || ''}"
-birthDate: "${birthDate}"
+name: "${escapeYaml(name)}"
+tagline: "${escapeYaml(tagline || '')}"
+avatar: "${escapeYaml(avatar || '')}"
+birthDate: "${escapeYaml(birthDate)}"
 ${skillsLine}
-shortGoal: "${shortGoal || ''}"
-longGoal: "${longGoal || ''}"
+shortGoal: "${escapeYaml(shortGoal || '')}"
+longGoal: "${escapeYaml(longGoal || '')}"
 ---
 
 关于我的一些事...
@@ -428,18 +470,35 @@ longGoal: "${longGoal || ''}"
   };
 }
 
-/** 读取请求 body */
+/** 最大请求体大小限制（10 MB） */
+const MAX_BODY_SIZE = 10 * 1024 * 1024;
+
+/** 读取请求 body，带大小限制 */
 function readBody(req: any): Promise<string> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     let body = '';
-    req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+    let size = 0;
+    req.on('data', (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > MAX_BODY_SIZE) {
+        req.destroy();
+        reject(new Error('请求体过大，最大允许 10 MB'));
+        return;
+      }
+      body += chunk.toString();
+    });
     req.on('end', () => resolve(body));
+    req.on('error', reject);
   });
 }
 
 function sanitizeFilename(title: string): string {
-  const ascii = title.replace(/[^\w\d-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-  if (ascii.length >= 2) return ascii.slice(0, 40);
+  // 保留中文字符、字母、数字、连字符，替换其他不安全字符
+  const safe = title
+    .replace(/[<>:"/\\|?*\x00-\x1f]/g, '-')  // 替换文件系统不安全字符
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  if (safe.length >= 2) return safe.slice(0, 40);
   return 'event-' + simpleHash(title).slice(0, 8);
 }
 

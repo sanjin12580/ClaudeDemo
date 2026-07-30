@@ -1,7 +1,7 @@
 import type { EventMeta } from '../lib/types';
 import { CATEGORY_COLORS } from '../lib/types';
 import { useI18n } from '../lib/i18n';
-import { to } from '../lib/base';
+import { to, formatDate, CARD_CLASSES } from '../lib/base';
 
 interface Props {
   event: EventMeta;
@@ -20,27 +20,13 @@ function StarRating({ value }: { value: number }) {
   );
 }
 
-function formatDate(dateStr: string): string {
-  const parts = dateStr.split('-');
-  if (parts.length === 3) {
-    return `${parts[0]} 年 ${parseInt(parts[1])} 月 ${parseInt(parts[2])} 日`;
-  }
-  if (parts.length === 2) {
-    return `${parts[0]} 年 ${parseInt(parts[1])} 月`;
-  }
-  return `${parts[0]} 年`;
-}
-
 export default function EventCard({ event }: Props) {
   const catColor = CATEGORY_COLORS[event.category] || CATEGORY_COLORS['其他'];
 
   return (
     <a
       href={to(`/events/${event.slug}`)}
-      className="group card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5
-                 shadow-sm hover:shadow-md hover:-translate-y-0.5
-                 transition-all duration-300 cursor-pointer
-                 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+      className={CARD_CLASSES}
     >
       {/* 头部：分类 + 日期 + 星级 */}
       <div className="flex items-center gap-3 mb-3 flex-wrap">
