@@ -19,6 +19,7 @@ export const zh = {
     timeline: '时间线',
     blog: '博客',
     about: '关于',
+    gallery: '画廊',
     admin: '⚙️ 管理',
   },
   home: {
@@ -127,6 +128,25 @@ export const zh = {
     goalDeleteConfirm: '确定删除目标「{title}」？',
     goalSaved: (path: string) => `目标已保存: ${path}`,
     goalEmpty: '还没有目标',
+    // 媒体管理
+    tabMedia: '📁 媒体',
+    mediaTitle: '标题',
+    mediaTitlePlaceholder: '如：武功山徒步照片',
+    mediaDesc: '描述',
+    mediaDescPlaceholder: '文件的简短描述...',
+    mediaAlbum: '相册',
+    mediaAlbumPlaceholder: '如：旅行、工作、生活',
+    mediaNew: '+ 上传文件',
+    mediaDeleteConfirm: '确定删除「{title}」？此操作不可撤销。',
+    mediaEmpty: '还没有媒体文件',
+    fileUpload: '📎 上传文件',
+    fileDrop: '拖拽文件到此处，或点击选择',
+    // 媒体插入
+    insertMedia: '📎 插入媒体',
+    insertMediaHint: '从已上传的文件中选择插入',
+    insertMediaTitle: '选择媒体文件',
+    insertMediaFooter: '点击文件插入到正文光标位置',
+    insertMediaEmpty: '还没有上传文件，请先在媒体 Tab 中上传',
   },
   lifeGrid: {
     less: '清淡',
@@ -225,6 +245,35 @@ export const zh = {
     萍水相逢: '萍水相逢',
     观众: '观众',
     其他: '其他',
+  },
+  /** 画廊 */
+  gallery: {
+    heading: '🖼️ 多媒体档案',
+    description: '照片和文件记录',
+    allTypes: '全部',
+    allAlbums: '全部相册',
+    empty: '还没有媒体文件，去管理后台添加吧 →',
+    uncategorized: '未分类',
+    preview: '预览',
+    download: '下载',
+    search: '搜索文件...',
+    noResults: '没有找到匹配的文件',
+    fileSize: (size: number) => {
+      if (size < 1024) return `${size} B`;
+      if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+      return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+    },
+  },
+  /** 文件类型名称 */
+  fileTypes: {
+    image: '图片',
+    document: '文档',
+    pdf: 'PDF',
+    video: '视频',
+    audio: '音频',
+    archive: '压缩包',
+    text: '文本',
+    other: '其他',
   },
 } as const;
 

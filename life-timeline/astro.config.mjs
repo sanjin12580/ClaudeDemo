@@ -11,5 +11,11 @@ export default defineConfig({
   devToolbar: { enabled: false },
   vite: {
     plugins: [tailwindcss(), adminApiPlugin()],
+    server: {
+      watch: {
+        // 排除管理后台 API 写入的数据文件，防止上传/删除/保存操作触发页面刷新
+        ignored: ['**/src/data/**'],
+      },
+    },
   },
 });

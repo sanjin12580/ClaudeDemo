@@ -18,6 +18,7 @@ const navLinks = [
   { href: to('/'), label: t.nav.home, match: (p: string) => p === to('/') || p === to('/').replace(/\/$/, '') },
   { href: to('/timeline'), label: t.nav.timeline, match: (p: string) => p.startsWith(to('/timeline')) },
   { href: to('/blog'), label: t.nav.blog, match: (p: string) => p.startsWith(to('/blog')) },
+  { href: to('/gallery'), label: t.nav.gallery, match: (p: string) => p.startsWith(to('/gallery')) },
   { href: to('/about'), label: t.nav.about, match: (p: string) => p.startsWith(to('/about')) },
 ];
 ---

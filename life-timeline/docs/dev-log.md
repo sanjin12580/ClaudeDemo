@@ -1,6 +1,6 @@
 # 人生时间线 — 开发日志
 
-> 最后更新：2026-07-30 (v0.5.0 + 维护)
+> 最后更新：2026-07-30 (v0.7.0)
 
 ---
 
@@ -113,6 +113,7 @@ life-timeline/
 - [x] **事件详情页** — 点击事件卡片跳转独立页面，服务端渲染完整 Markdown
 - [x] **搜索功能** — 首页和 Timeline 全局搜索，支持标题/分类/标签/正文匹配
 - [x] **图片上传** — 管理后台拖拽上传，自动插入 Markdown 图片语法到正文
+- [x] **文件上传** — 扩展至 30+ 文件格式，支持文档/PDF/视频/音频/文本等
 
 ### 部署
 - [x] **GitHub Pages** — GitHub Actions 自动部署，推送 main 分支即构建
@@ -126,12 +127,44 @@ life-timeline/
 - [ ] 生活数据追踪（健康/财务/阅读/习惯）
 - [x] 思想花园（博客/随笔/笔记）
 - [x] 个人档案页（基本资料 + 关系图谱）
-- [ ] 多媒体档案
+- [x] 多媒体档案 — 画廊页面 + kkFileView 文件预览集成
 - [x] 人生周数可视化增强
 
 ---
 
 ## 变更记录
+
+### 2026-07-30 — v0.7.0 (Phase 10: kkFileView 存储重构 + 三项改进)
+
+**kkFileView 存储重构：**
+- **架构变更**: kkFileView 作为主文件存储服务 — 上传通过 `/fileUpload` 代理到 kkFileView，预览直接通过 kkFileView 的 `/onlinePreview` 端点
+- **feat**: `uploadToKkFileView()` — Node.js 原生 `http.request` 构造 multipart/form-data 上传
+- **feat**: `POST /api/upload-file` 重构 — 文件不再存本地 `public/files/`，改为代理上传到 kkFileView
+- **feat**: `DELETE /api/delete-media` 重构 — 调用 kkFileView `/deleteFile` 删除文件
+- **feat**: `src/lib/filePreview.ts` — `getPreviewUrl()` 使用 Base64 编码 URL（kkFileView API 协议要求）；新增 `getFileUrl()` 直接文件访问
+- **fix**: kkFileView 预览 "主机名为空或无效" 错误 — `url` 参数从 URL 编码修正为 Base64 编码
+- **fix**: Vite HMR 自动刷新 — `astro.config.mjs` 添加 `server.watch.ignored: ['**/src/data/**']`
+
+**文件管理三项改进：**
+- **feat**: 文件类型白名单从 47 种扩展到 130+ 种（覆盖 kkFileView v5 全部支持格式，含 xmind/Visio/CAD/3D/医学等）
+- **feat**: `EXTENSION_ICONS` 精确图标映射 — 120+ 种扩展名按类型显示不同 emoji（.xmind 🧠、.xlsx 📊、.dwg 🏗️、.psd 🎨 等）
+- **feat**: 画廊文件卡片显示扩展名徽标（`.XLSX`、`.PDF` 等）
+- **feat**: 管理后台「📎 插入媒体」— 事件/文章编辑时从媒体库选择插入 Markdown，上传与编辑分离
+- **fix**: 管理后台媒体列表图标从 3 个硬编码 emoji 改为完整图标映射
+- **fix**: 上传文件名 title 保留完整扩展名
+
+### 2026-07-30 — v0.6.0 (Phase 9)
+
+- **feat**: 多媒体档案系统 — 画廊页面 `/gallery` + 管理后台「媒体」Tab
+- **feat**: 文件上传全面扩展 — 从 6 种图片格式扩展到 30+ 格式（文档/PDF/视频/音频/文本/压缩包）
+- **feat**: kkFileView 文件预览集成 — 非图片文件可在线预览（Office/PDF/视频等）
+- **feat**: 画廊页面 — 类型筛选 tabs + 相册分组 + 搜索 + 灯箱查看图片
+- **feat**: 管理后台第 5 个 Tab「📁 媒体」— 上传/编辑元数据/删除
+- **feat**: 事件/博客编辑区上传支持所有文件类型（图片插入 `![alt](url)`，其他插入 `[filename](url)`）
+- **feat**: `src/data/media.json` 媒体元数据存储 + parseMedia 加载工具
+- **refactor**: `POST /api/upload-image` → `POST /api/upload-file`（扩展名白名单 6→30+，大小限制 10→50MB）
+- **feat**: 新增 `POST /api/write-media` 和 `DELETE /api/delete-media` API 端点
+- **feat**: 导航栏新增「画廊」链接
 
 ### 2026-07-30 — 维护
 

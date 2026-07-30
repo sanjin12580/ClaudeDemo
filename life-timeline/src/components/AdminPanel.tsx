@@ -1,11 +1,15 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
-import type { EventMeta, PostMeta, Profile, Goal, Category } from '../lib/types';
-import { CATEGORY_COLORS } from '../lib/types';
+import type { EventMeta, PostMeta, Profile, Goal, MediaItem, Category } from '../lib/types';
+import { CATEGORY_COLORS, ALLOWED_EXTENSIONS, classifyFileType, getIconForFile } from '../lib/types';
 import { useI18n } from '../lib/i18n';
+import { getFileUrl } from '../lib/filePreview';
 
 const CATEGORIES: Category[] = ['教育', '工作', '旅行', '健康', '关系', '项目', '其他'];
 
-type AdminMode = 'events' | 'posts' | 'profile' | 'goals';
+// 所有允许上传的文件扩展名（扁平集合用于 accept 属性）
+const ALL_EXTENSIONS = Object.values(ALLOWED_EXTENSIONS).flat();
+
+type AdminMode = 'events' | 'posts' | 'profile' | 'goals' | 'media';
 
 interface FormData {
   date: string;
@@ -34,6 +38,7 @@ interface Props {
   posts: PostMeta[];
   profile: Profile | null;
   goals: Goal[];
+  media: MediaItem[];
 }
 
 // ============================================================
@@ -62,7 +67,7 @@ function renderMarkdown(text: string): string {
 // ============================================================
 // 主组件
 // ============================================================
-export default function AdminPanel({ events: initialEvents, posts: initialPosts, profile: initialProfile, goals: initialGoals }: Props) {
+export default function AdminPanel({ events: initialEvents, posts: initialPosts, profile: initialProfile, goals: initialGoals, media: initialMedia }: Props) {
   const { admin: t } = useI18n();
 
   // 模式切换
@@ -98,6 +103,16 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
   };
   const [goalForm, setGoalForm] = useState(EMPTY_GOAL_FORM);
 
+  // 媒体列表
+  const [media, setMedia] = useState<MediaItem[]>(initialMedia);
+  const [selectedMediaId, setSelectedMediaId] = useState<string | null>(null);
+  const EMPTY_MEDIA_FORM = {
+    title: '',
+    description: '',
+    album: '',
+  };
+  const [mediaForm, setMediaForm] = useState(EMPTY_MEDIA_FORM);
+
   // 列表筛选
   const [filterCategory, setFilterCategory] = useState<string>('全部');
   const [searchQuery, setSearchQuery] = useState('');
@@ -114,17 +129,21 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState('');
   const [dragOver, setDragOver] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaFileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // ========== 图片上传 ==========
+  // 媒体选择器
+  const [showMediaPicker, setShowMediaPicker] = useState(false);
+  const [mediaPickerFilter, setMediaPickerFilter] = useState('');
+
+  // ========== 文件上传（支持图片+所有文件类型） ==========
   async function handleUpload(file: File) {
-    if (file.size > 10 * 1024 * 1024) {
-      setUploadMsg(t.imageMaxSize);
+    if (file.size > 50 * 1024 * 1024) {
+      setUploadMsg('文件不能超过 50MB');
       return;
     }
     setUploading(true);
-    setUploadMsg(t.imageUploading);
+    setUploadMsg('上传中...');
     try {
       const reader = new FileReader();
       const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -133,35 +152,50 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
         reader.readAsDataURL(file);
       });
 
-      const resp = await fetch('/api/upload-image', {
+      const resp = await fetch('/api/upload-file', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filename: file.name, data: dataUrl }),
       });
       const result = await resp.json();
       if (resp.ok && result.success) {
-        const md = `![${file.name.replace(/\.[^.]+$/, '')}](${result.url})`;
-        const ta = textareaRef.current;
-        if (ta) {
-          const start = ta.selectionStart;
-          const end = ta.selectionEnd;
-          const before = form.content.slice(0, start);
-          const after = form.content.slice(end);
-          const newContent = before + (before && !before.endsWith('\n') ? '\n' : '') + md + '\n' + after;
-          update('content', newContent);
-          setTimeout(() => {
-            ta.focus();
-            ta.selectionStart = ta.selectionEnd = start + md.length + (before && !before.endsWith('\n') ? 1 : 0) + 1;
-          }, 0);
-        }
+        const ext = file.name.split('.').pop()?.toLowerCase() || '';
+        const fileType = classifyFileType(ext);
+
+        // 创建媒体记录
+        const newItem: MediaItem = {
+          id: `m-${Date.now()}`,
+          filename: result.filename,
+          url: result.url,
+          title: file.name,
+          description: '',
+          album: '未分类',
+          fileType,
+          mimeType: file.type,
+          fileSize: file.size,
+          tags: [],
+          createdAt: new Date().toISOString(),
+        };
+
+        setMedia((prev) => {
+          const updated = [newItem, ...prev];
+          // 自动持久化媒体元数据
+          fetch('/api/write-media', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ media: updated }),
+          }).catch(() => {});
+          return updated;
+        });
+
         setUploadMsg('');
         setUploading(false);
       } else {
-        setUploadMsg(result.error || t.imageFailed);
+        setUploadMsg(result.error || '上传失败');
         setUploading(false);
       }
     } catch (err) {
-      setUploadMsg(t.imageFailed);
+      setUploadMsg('上传失败');
       setUploading(false);
     }
   }
@@ -170,9 +204,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
-      handleUpload(file);
-    }
+    if (file) handleUpload(file);
   }
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -542,6 +574,16 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
           >
             {t.tabGoals}
           </button>
+          <button
+            onClick={() => switchMode('media')}
+            className={`flex-1 text-sm px-4 py-3 transition-colors font-medium
+              ${mode === 'media'
+                ? 'text-green-600 dark:text-green-400 border-b-2 border-green-500 bg-white dark:bg-gray-900'
+                : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 border-b-2 border-transparent'
+              }`}
+          >
+            {t.tabMedia}
+          </button>
         </div>
 
         {/* 列表头部 — 仅在事件/文章模式下显示 */}
@@ -711,12 +753,67 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
             </div>
           </>
         )}
+
+        {/* 媒体列表 */}
+        {mode === 'media' && (
+          <>
+            <div className="p-4 border-b border-gray-200 dark:border-gray-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="font-semibold text-sm">{t.tabMedia}</h2>
+                <span className="text-xs text-gray-400 dark:text-gray-500">{media.length}</span>
+              </div>
+              <button
+                onClick={() => { setSelectedMediaId(null); setMediaForm(EMPTY_MEDIA_FORM); }}
+                className="w-full text-xs px-3 py-2 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700 transition-colors"
+              >
+                {t.mediaNew}
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              {media.length === 0 ? (
+                <div className="text-center py-12 text-xs text-gray-400 dark:text-gray-500">{t.mediaEmpty}</div>
+              ) : (
+                <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                  {media.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => {
+                        setSelectedMediaId(item.id);
+                        setMediaForm({
+                          title: item.title || '',
+                          description: item.description || '',
+                          album: item.album === '未分类' ? '' : item.album,
+                        });
+                      }}
+                      className={`p-3 cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-800
+                        ${selectedMediaId === item.id ? 'bg-green-50 dark:bg-green-950 border-l-2 border-green-500' : 'border-l-2 border-transparent'}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">
+                          {item.fileType === 'image'
+                            ? <img src={getFileUrl(item.url)} alt="" className="w-6 h-6 object-cover rounded" />
+                            : <span className="text-base">{getIconForFile(item.filename, item.fileType)}</span>
+                          }
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{item.title || item.filename}</p>
+                          <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate">{item.filename}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </aside>
 
       {/* ========== 右侧：编辑面板 ========== */}
       <main className="flex-1 flex flex-col min-w-0">
         {/* Tab 切换 */}
-        {mode !== 'profile' && mode !== 'goals' && (selectedSlug || (mode === 'events' ? !initialEvents.some((e) => e.slug === selectedSlug) : !initialPosts.some((p) => p.slug === selectedSlug))) ? (
+        {mode !== 'profile' && mode !== 'goals' && mode !== 'media' && (selectedSlug || (mode === 'events' ? !initialEvents.some((e) => e.slug === selectedSlug) : !initialPosts.some((p) => p.slug === selectedSlug))) ? (
           <div className="flex items-center border-b border-gray-200 dark:border-gray-800 px-4">
             <button
               onClick={() => setEditTab('edit')}
@@ -761,7 +858,160 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
 
         {/* 内容区 */}
         <div className="flex-1 overflow-y-auto p-6">
-          {mode === 'goals' ? (
+          {mode === 'media' ? (
+            /* ======== 媒体编辑/上传 ======== */
+            <div className="space-y-6 max-w-xl">
+              {/* 上传区 */}
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                onClick={() => mediaFileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors
+                  ${dragOver
+                    ? 'border-green-400 bg-green-50 dark:bg-green-950'
+                    : 'border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600'
+                  }`}
+              >
+                {uploading ? (
+                  <div className="text-sm text-gray-400 dark:text-gray-500">
+                    <span className="loading loading-spinner loading-sm mr-2" />
+                    {uploadMsg}
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-3xl mb-2">📎</div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{t.fileUpload}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{t.fileDrop}</p>
+                  </>
+                )}
+                <input
+                  ref={mediaFileInputRef}
+                  type="file"
+                  accept={ALL_EXTENSIONS.map((e) => `.${e}`).join(',')}
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+              </div>
+              {uploadMsg && !uploading && (
+                <p className="text-xs text-red-400 -mt-4">{uploadMsg}</p>
+              )}
+
+              <hr className="border-gray-200 dark:border-gray-700" />
+
+              {/* 编辑表单 */}
+              {selectedMediaId ? (
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!selectedMediaId) return;
+                    setMedia((prev) => {
+                      const updated = prev.map((m) =>
+                        m.id === selectedMediaId
+                          ? { ...m, title: mediaForm.title, description: mediaForm.description, album: mediaForm.album || '未分类' }
+                          : m
+                      );
+                      fetch('/api/write-media', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ media: updated }),
+                      }).catch(() => {});
+                      return updated;
+                    });
+                    setStatus('success');
+                    setMessage('已保存');
+                    setTimeout(() => setMessage(''), 2000);
+                  }}
+                  className="space-y-4"
+                >
+                  <div>
+                    <label className="block text-xs font-medium mb-1">{t.mediaTitle}</label>
+                    <input
+                      type="text"
+                      value={mediaForm.title}
+                      onChange={(e) => setMediaForm((p) => ({ ...p, title: e.target.value }))}
+                      placeholder={t.mediaTitlePlaceholder}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium mb-1">{t.mediaDesc}</label>
+                    <input
+                      type="text"
+                      value={mediaForm.description}
+                      onChange={(e) => setMediaForm((p) => ({ ...p, description: e.target.value }))}
+                      placeholder={t.mediaDescPlaceholder}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium mb-1">{t.mediaAlbum}</label>
+                    <input
+                      type="text"
+                      value={mediaForm.album}
+                      onChange={(e) => setMediaForm((p) => ({ ...p, album: e.target.value }))}
+                      placeholder={t.mediaAlbumPlaceholder}
+                      list="album-suggestions"
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                    />
+                    <datalist id="album-suggestions">
+                      {Array.from(new Set(media.map((m) => m.album).filter(Boolean))).map((a) => (
+                        <option key={a} value={a} />
+                      ))}
+                    </datalist>
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      type="submit"
+                      className="px-5 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors"
+                    >
+                      保存
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!selectedMediaId) return;
+                        const item = media.find((m) => m.id === selectedMediaId);
+                        if (!item) return;
+                        if (!confirm(t.mediaDeleteConfirm.replace('{title}', item.title || item.filename))) return;
+                        try {
+                          await fetch('/api/delete-media', {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ filename: item.filename }),
+                          });
+                        } catch {}
+                        setMedia((prev) => {
+                          const updated = prev.filter((m) => m.id !== selectedMediaId);
+                          fetch('/api/write-media', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ media: updated }),
+                          }).catch(() => {});
+                          return updated;
+                        });
+                        setSelectedMediaId(null);
+                        setMediaForm(EMPTY_MEDIA_FORM);
+                      }}
+                      className="px-3 py-2 rounded-lg border border-red-200 dark:border-red-900 text-red-500 text-xs font-medium hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
+                    >
+                      {t.deleteBtn}
+                    </button>
+                    {message && (
+                      <span className={`text-xs ${status === 'success' ? 'text-green-600' : 'text-red-500'}`}>{message}</span>
+                    )}
+                  </div>
+                </form>
+              ) : (
+                <div className="text-center py-8 text-gray-400 dark:text-gray-500 text-sm">
+                  ← 从左侧选择媒体或上传新文件
+                </div>
+              )}
+            </div>
+          ) : mode === 'goals' ? (
             /* ======== 目标编辑表单 ======== */
             <form onSubmit={handleGoalSubmit} className="space-y-4 max-w-xl">
               <div>
@@ -1072,35 +1322,19 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
               <div>
                 <label className="block text-xs font-medium mb-1">{t.contentLabel}</label>
 
-                {/* 图片上传区域 */}
-                <div
-                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                  onDragLeave={() => setDragOver(false)}
-                  onDrop={handleDrop}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`mb-2 border-2 border-dashed rounded-lg px-4 py-3 text-center cursor-pointer transition-colors
-                    ${dragOver
-                      ? 'border-green-400 bg-green-50 dark:bg-green-950'
-                      : 'border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500'
-                    }
-                    ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
-                >
-                  {uploading ? (
-                    <span className="text-xs text-gray-500 dark:text-gray-400">{uploadMsg}</span>
-                  ) : uploadMsg ? (
-                    <span className="text-xs text-red-500">{uploadMsg}</span>
-                  ) : (
-                    <span className="text-xs text-gray-400 dark:text-gray-500">
-                      {t.imageUpload} — {t.imageDrop}
-                    </span>
-                  )}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/gif,image/webp"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                  />
+                {/* 插入媒体按钮 */}
+                <div className="flex items-center gap-2 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowMediaPicker(true)}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700
+                               text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800
+                               transition-colors inline-flex items-center gap-1"
+                  >
+                    <span>🖼️</span>
+                    {t.insertMedia}
+                  </button>
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500">{t.insertMediaHint}</span>
                 </div>
 
                 <textarea
@@ -1197,6 +1431,98 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
                 {t.deleteBtn}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========== 媒体选择器弹窗 ========== */}
+      {showMediaPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
+             onClick={() => { setShowMediaPicker(false); setMediaPickerFilter(''); }}>
+          <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-xl max-w-lg w-full max-h-[70vh] flex flex-col"
+               onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">{t.insertMediaTitle}</h3>
+              <button onClick={() => { setShowMediaPicker(false); setMediaPickerFilter(''); }}
+                      className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+            </div>
+
+            {/* 搜索 */}
+            <input
+              type="text"
+              value={mediaPickerFilter}
+              onChange={(e) => setMediaPickerFilter(e.target.value)}
+              placeholder={t.search}
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900
+                         px-3 py-1.5 text-xs mb-3 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+            />
+
+            {/* 媒体列表 */}
+            <div className="flex-1 overflow-y-auto space-y-1">
+              {media
+                .filter((m) => {
+                  if (!mediaPickerFilter) return true;
+                  const q = mediaPickerFilter.toLowerCase();
+                  return m.title.toLowerCase().includes(q) || m.filename.toLowerCase().includes(q);
+                })
+                .map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      const isImage = item.fileType === 'image';
+                      const linkTitle = item.title || item.filename;
+                      const md = isImage
+                        ? `![${linkTitle}](${getFileUrl(item.url)})`
+                        : `[${linkTitle}](${getFileUrl(item.url)})`;
+                      const ta = textareaRef.current;
+                      if (ta) {
+                        const start = ta.selectionStart;
+                        const end = ta.selectionEnd;
+                        const before = form.content.slice(0, start);
+                        const after = form.content.slice(end);
+                        const newContent = before + (before && !before.endsWith('\n') ? '\n' : '') + md + '\n' + after;
+                        update('content', newContent);
+                        setTimeout(() => {
+                          ta.focus();
+                          ta.selectionStart = ta.selectionEnd = start + md.length + (before && !before.endsWith('\n') ? 1 : 0) + 1;
+                        }, 0);
+                      }
+                      setShowMediaPicker(false);
+                      setMediaPickerFilter('');
+                    }}
+                    className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg
+                               hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    <span className="text-xl shrink-0">
+                      {item.fileType === 'image'
+                        ? <img src={getFileUrl(item.url)} alt="" className="w-8 h-8 object-cover rounded" />
+                        : <span>{getIconForFile(item.filename, item.fileType)}</span>
+                      }
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{item.title || item.filename}</p>
+                      <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate">{item.filename}</p>
+                    </div>
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500 shrink-0 ml-auto">
+                      {item.fileType}
+                    </span>
+                  </button>
+                ))}
+              {media.filter((m) => {
+                if (!mediaPickerFilter) return true;
+                const q = mediaPickerFilter.toLowerCase();
+                return m.title.toLowerCase().includes(q) || m.filename.toLowerCase().includes(q);
+              }).length === 0 && (
+                <div className="text-center py-8 text-sm text-gray-400 dark:text-gray-500">
+                  {media.length === 0 ? t.insertMediaEmpty : t.emptyList}
+                </div>
+              )}
+            </div>
+
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-3 text-center">
+              {t.insertMediaFooter}
+            </p>
           </div>
         </div>
       )}
