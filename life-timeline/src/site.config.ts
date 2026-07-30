@@ -14,4 +14,7 @@ export const siteConfig = {
 
   /** 站点描述 */
   description: '记录我的一生',
+
+  /** kkFileView 文件预览服务地址 */
+  kkFileViewUrl: 'http://localhost:8012',
 } as const;
