@@ -1,0 +1,36 @@
+---
+// ============================================================
+// /trending — GitHub 热门项目页面
+// 构建时拉取初始数据，客户端自动刷新
+// ============================================================
+
+import Layout from '../../layouts/Layout.astro';
+import TrendingGrid from '../../components/TrendingGrid';
+import { fetchTrendingData, FALLBACK_TRENDING } from '../../lib/fetchTrending';
+import type { TrendingData } from '../../lib/fetchTrending';
+
+// 构建时尝试拉取数据，失败则用 Fallback
+let initialData: TrendingData;
+try {
+  initialData = await fetchTrendingData();
+  // 四个维度都没有数据时才用 Fallback
+  if (
+    initialData.global.length === 0 &&
+    initialData.chinese.length === 0 &&
+    initialData.globalTop.length === 0 &&
+    initialData.chineseTop.length === 0
+  ) {
+    initialData = FALLBACK_TRENDING;
+  }
+} catch {
+  initialData = FALLBACK_TRENDING;
+}
+---
+
+<Layout
+  title="🔥 GitHub 热门项目"
+  description="探索 GitHub 上最新最热的开发者开源项目，分为全站热门和中文项目"
+  wide={true}
+>
+  <TrendingGrid initialData={initialData} client:load />
+</Layout>
