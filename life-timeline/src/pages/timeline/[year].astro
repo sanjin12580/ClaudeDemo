@@ -47,7 +47,7 @@ for (const event of yearEvents) {
         <div class="text-center py-16 text-gray-400 dark:text-gray-500">
           {t.yearPage.empty}
           <br />
-          <a href="/admin" class="text-green-600 dark:text-green-400 hover:underline text-sm mt-2 inline-block">
+          <a href={to('/admin')} class="text-green-600 dark:text-green-400 hover:underline text-sm mt-2 inline-block">
             {t.yearPage.goAdd}
           </a>
         </div>

@@ -4,7 +4,7 @@ import { useI18n } from '../lib/i18n';
 
 // 贡献图颜色阶梯 — 使用 daisyUI token
 const INTENSITY_COLORS = [
-  'bg-gray-50 dark:bg-gray-950 dark:bg-gray-900 dark:bg-gray-100',
+  'bg-gray-50 dark:bg-gray-950',
   'bg-success/30',
   'bg-success/50',
   'bg-success/70',

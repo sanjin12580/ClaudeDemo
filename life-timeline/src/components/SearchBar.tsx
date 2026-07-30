@@ -2,22 +2,11 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import type { EventMeta } from '../lib/types';
 import { CATEGORY_COLORS } from '../lib/types';
 import { useI18n } from '../lib/i18n';
-import { to } from '../lib/base';
+import { to, formatDate } from '../lib/base';
 
 interface Props {
   events: EventMeta[];
   onQueryChange?: (query: string) => void;
-}
-
-function formatDate(dateStr: string): string {
-  const parts = dateStr.split('-');
-  if (parts.length === 3) {
-    return `${parts[0]}年${parseInt(parts[1])}月${parseInt(parts[2])}日`;
-  }
-  if (parts.length === 2) {
-    return `${parts[0]}年${parseInt(parts[1])}月`;
-  }
-  return `${parts[0]}年`;
 }
 
 export default function SearchBar({ events, onQueryChange }: Props) {

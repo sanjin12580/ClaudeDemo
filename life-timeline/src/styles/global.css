@@ -17,15 +17,16 @@
 }
 
 /* 全局排版优化 */
+html {
+  /* 始终显示垂直滚动条，防止页面切换时因滚动条出现/消失导致的横向布局偏移 */
+  overflow-y: scroll;
+}
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 主题切换过渡 */
-html {
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
+/* 主题切换过渡 — 仅在手动切换时启用（.transitioning 类），避免页面导航闪烁 */
 html.transitioning,
 html.transitioning *,
 html.transitioning *::before,

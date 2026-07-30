@@ -27,6 +27,18 @@ export default function LifeCounter({ birthDate }: Props) {
   }, []);
 
   const birth = new Date(birthDate);
+  // 校验出生日期有效性，避免渲染 NaN
+  const isValid = !isNaN(birth.getTime());
+  if (!isValid) {
+    return (
+      <div className="card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
+        <div className="card-body p-6 text-center text-gray-400 dark:text-gray-500">
+          <p className="text-sm">出生日期未配置或格式无效</p>
+        </div>
+      </div>
+    );
+  }
+
   const diffMs = now.getTime() - birth.getTime();
   const days = Math.floor(diffMs / 86400000);
   const weeks = Math.floor(days / 7);

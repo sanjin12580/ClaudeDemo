@@ -1,16 +1,8 @@
 import type { PostMeta } from '../lib/types';
-import { to } from '../lib/base';
+import { to, formatDate, CARD_CLASSES } from '../lib/base';
 
 interface Props {
   post: PostMeta;
-}
-
-function formatDate(dateStr: string): string {
-  const parts = dateStr.split('-');
-  if (parts.length === 3) {
-    return `${parts[0]} 年 ${parseInt(parts[1])} 月 ${parseInt(parts[2])} 日`;
-  }
-  return dateStr;
 }
 
 /** 去除 Markdown 标记，提取纯文本摘要 */
@@ -30,10 +22,7 @@ export default function BlogCard({ post }: Props) {
   return (
     <a
       href={to(`/blog/${post.slug}`)}
-      className="group card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5
-                 shadow-sm hover:shadow-md hover:-translate-y-0.5
-                 transition-all duration-300 cursor-pointer
-                 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+      className={CARD_CLASSES}
     >
       <time className="text-sm text-gray-500 dark:text-gray-400 font-mono tabular-nums">
         {formatDate(post.date)}

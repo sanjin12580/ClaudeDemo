@@ -1,6 +1,6 @@
 # 人生时间线 — 开发日志
 
-> 最后更新：2026-07-29 (Phase 8 完成)
+> 最后更新：2026-07-30 (v0.5.0 + 维护)
 
 ---
 
@@ -39,6 +39,14 @@
 - [x] 关闭 Astro Dev Toolbar（英文菜单，与中文网站不协调）
 - [x] 轻量 i18n 多语言工具 `src/lib/i18n.ts`（默认中文，可扩展）
 - [x] 所有 UI 文本统一由 i18n 词典管理
+
+### v0.5.0: 人生目标看板 + 进度条增强 + 1/e 生命标记
+- [x] **目标看板** `GoalBoard.tsx` — 短期/长期目标分组展示，motion 动画进度条，状态标签
+- [x] **目标数据** `src/data/goals.json` — 5 个示例目标（3 短期 + 2 长期）
+- [x] **管理后台「目标」Tab** — 第 4 个 Tab，表单支持目标增删改查，进度滑块
+- [x] **Vite API 扩展** — `POST /api/write-goals` 端点
+- [x] **生命计数器增强** `LifeCounter.tsx` — 人生进度条（渐变色 + 光泽），1/e 分割线标记（~29.4 岁），动画百分比标签
+- [x] **首页集成** — `index.astro` 加入 GoalBoard 组件
 
 ---
 
@@ -107,7 +115,7 @@ life-timeline/
 - [x] **图片上传** — 管理后台拖拽上传，自动插入 Markdown 图片语法到正文
 
 ### 部署
-- [x] **GitHub Pages** — GitHub Actions 自动部署，推送 dev 分支即构建
+- [x] **GitHub Pages** — GitHub Actions 自动部署，推送 main 分支即构建
 - [ ] **自定义域名**
 
 ### 数据
@@ -124,6 +132,51 @@ life-timeline/
 ---
 
 ## 变更记录
+
+### 2026-07-30 — 维护
+
+**代码审查 + 修复：**
+
+- **安全修复**（vite-plugin-admin-api.ts）：
+  - 路径穿越防护：`String.includes()` → `isPathWithin()` 规范化路径前缀校验
+  - 存储型 XSS 防护：图片上传扩展名白名单（仅允许 png/jpg/jpeg/gif/webp/svg）
+  - YAML 注入防护：所有用户输入字段转义双引号、反斜杠和换行符
+  - 路径注入防护：`date` 字段正则校验 `^\d{4}(-\d{2}(-\d{2})?)?$`
+  - 请求体大小限制：最大 10 MB
+  - 文件名清洗保留中文字符
+- **Bug 修复**：
+  - LifeGrid 暗色模式 CSS 冲突（3 个冲突的 `dark:bg-*` → `dark:bg-gray-950`）
+  - ProfileCard 无效 Tailwind 类名（`text-yellow-500-content/80` → `text-amber-600`）
+  - 年份详情页硬编码 `/admin` 链接 → 使用 `to('/admin')`
+  - LifeCounter 无效出生日期时渲染 NaN → 显示占位提示
+  - Layout favicon 路径硬编码 → 使用 `to('/favicon.svg')`
+  - FileReader 缺少 onerror 导致上传失败时 UI 永久卡住
+  - parseGoals 缺少运行时类型校验
+- **代码清理**：
+  - 删除零引用死代码 AdminForm.tsx
+  - formatDate 从 6 处重复提取到 base.ts 统一维护
+  - 卡片 CSS 样式（CARD_CLASSES）提取为共享常量
+  - parsePosts 重复函数改为从 postUtils 重导出
+  - React.FormEvent 添加泛型参数
+
+**页面抖动修复：**
+
+- **问题**：页面导航时出现可见抖动，博客页尤为明显
+- **原因 1**：`global.css` 中 `html { transition: background-color 0.3s ease, color 0.3s ease }` 导致每次页面加载都执行过渡动画
+  - **修复**：移除 `html` 全局过渡，仅保留 `.transitioning` 类（手动切换主题时使用）
+- **原因 2**：`<html>` 硬编码 `data-theme="emerald"`，暗色模式用户看到亮色闪现
+  - **修复**：移除硬编码，改为在防闪烁脚本中同时设置亮/暗两种主题
+- **原因 3**：页面高度不同时，浏览器滚动条出现/消失导致横向 ~6px 布局偏移
+  - **修复**：`html { overflow-y: scroll }` 强制始终显示滚动条
+
+### 2026-07-29 — v0.5.0
+- **feat**: 目标看板 GoalBoard — 短期/长期目标分组，motion 动画进度条，状态标签（进行中/已完成/已暂停）
+- **feat**: 目标数据管理 — `src/data/goals.json`，5 个示例目标
+- **feat**: 管理后台第 4 个 Tab「目标」— 表单支持增删改查，进度滑块
+- **feat**: Vite API 新增 `/api/write-goals` 端点
+- **feat**: 生命计数器增强 — 人生进度条（渐变色 + 光泽效果），1/e 分割线标记（约 29.4 岁）
+- **feat**: 进度条百分比标签跟随动画，<15% 时标签显示在外侧
+- **feat**: 首页集成 GoalBoard，位于 LifeCounter 和 LifeGrid 之间
 
 ### 2026-07-29 — v0.4.0 (Phase 8)
 - **feat**: daisyUI v5 + motion 框架集成，全局主题系统
