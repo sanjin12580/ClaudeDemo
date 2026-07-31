@@ -7,9 +7,11 @@ import ThemeToggle from '../components/ThemeToggle';
 export interface Props {
   title: string;
   description?: string;
+  /** 是否使用宽屏布局（不限制最大宽度） */
+  wide?: boolean;
 }
 
-const { title, description } = Astro.props;
+const { title, description, wide = false } = Astro.props;
 
 // 当前路由路径（用于导航高亮）
 const currentPath = Astro.url.pathname.replace(/\/$/, '') || '/';
@@ -18,6 +20,7 @@ const navLinks = [
   { href: to('/'), label: t.nav.home, match: (p: string) => p === to('/') || p === to('/').replace(/\/$/, '') },
   { href: to('/timeline'), label: t.nav.timeline, match: (p: string) => p.startsWith(to('/timeline')) },
   { href: to('/blog'), label: t.nav.blog, match: (p: string) => p.startsWith(to('/blog')) },
+  { href: to('/trending'), label: t.nav.trending, match: (p: string) => p.startsWith(to('/trending')) },
   { href: to('/gallery'), label: t.nav.gallery, match: (p: string) => p.startsWith(to('/gallery')) },
   { href: to('/about'), label: t.nav.about, match: (p: string) => p.startsWith(to('/about')) },
 ];
@@ -92,7 +95,7 @@ const navLinks = [
     </header>
 
     <!-- 主内容 -->
-    <main class="flex-1 max-w-6xl mx-auto px-6 py-8 w-full">
+    <main class={`flex-1 mx-auto px-6 py-8 w-full ${wide ? 'max-w-[90rem]' : 'max-w-6xl'}`}>
       <slot />
     </main>
 

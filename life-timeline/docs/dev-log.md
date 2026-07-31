@@ -1,6 +1,6 @@
 # 人生时间线 — 开发日志
 
-> 最后更新：2026-07-30 (v0.7.0)
+> 最后更新：2026-07-30 (v0.8.0)
 
 ---
 
@@ -133,6 +133,20 @@ life-timeline/
 ---
 
 ## 变更记录
+
+### 2026-07-30 — v0.8.0 (Phase 11: GitHub 热门项目)
+
+- **feat**: GitHub Trending 页面 `/trending` — 左右两栏布局，左侧卡片网格 + 右侧悬浮总榜
+- **feat**: TrendingGrid 组件 — Tab 切换（全站/中文）+ 数据刷新 + 规则说明
+- **feat**: TrendingCard 组件 — 项目卡片（头像/描述/Star 数/语言圆点/主题标签）
+- **feat**: TrendingSidebar 组件 — 悬浮 Top 10 总榜（全时段最热项目，全站 + 中文分别展示）
+- **feat**: `src/lib/fetchTrending.ts` — GitHub Search API 封装（4 路并行查询：7天新建 + 全时段 Top 10 × 全站/中文）
+- **feat**: `src/lib/languageColors.ts` — 30+ GitHub 官方语言颜色映射
+- **feat**: 混合数据模式 — 构建时静态快照 + 客户端 sessionStorage 缓存（5 分钟 TTL）+ API 限流降级
+- **feat**: Layout 新增 `wide` 属性 — trending 页面使用 1440px 宽屏容器
+- **feat**: 导航栏新增「GitHub热门」链接
+- **feat**: i18n 新增 trending 词典段
+- **fix**: GitHub Search API URL 编码问题 — `URLSearchParams` 会将 `:/>+` 编码导致 API 返回空结果
 
 ### 2026-07-30 — v0.7.0 (Phase 10: kkFileView 存储重构 + 三项改进)
 

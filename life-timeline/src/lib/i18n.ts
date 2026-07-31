@@ -18,8 +18,9 @@ export const zh = {
     home: '人生时间线',
     timeline: '时间线',
     blog: '博客',
-    about: '关于',
+    trending: 'GitHub热门',
     gallery: '画廊',
+    about: '关于',
     admin: '⚙️ 管理',
   },
   home: {
@@ -263,6 +264,20 @@ export const zh = {
       if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
       return `${(size / (1024 * 1024)).toFixed(1)} MB`;
     },
+  },
+  /** GitHub Trending */
+  trending: {
+    heading: '🔥 GitHub 热门项目',
+    description: '探索 GitHub 上最新最热的开发者项目',
+    global: '🌍 全站热门',
+    chinese: '🇨🇳 中文项目',
+    refresh: '🔄 刷新',
+    stars: (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${n}`),
+    updated: (mins: number) => (mins < 1 ? '刚刚' : `${mins} 分钟前`),
+    cached: '⚡ 数据来自缓存',
+    empty: '暂无数据，请稍后刷新',
+    language: '语言',
+    created: '创建于',
   },
   /** 文件类型名称 */
   fileTypes: {
