@@ -1,6 +1,6 @@
 # 人生时间线 — 开发日志
 
-> 最后更新：2026-07-30 (v0.8.0)
+> 最后更新：2026-07-31 (v0.9.0)
 
 ---
 
@@ -125,6 +125,7 @@ life-timeline/
 
 ### 后续子系统（远期）
 - [ ] 生活数据追踪（健康/财务/阅读/习惯）
+- [ ] **读书观影清单** — 已建数据模型和组件框架，需重新设计交互流程（豆瓣封面自动拉取等）
 - [x] 思想花园（博客/随笔/笔记）
 - [x] 个人档案页（基本资料 + 关系图谱）
 - [x] 多媒体档案 — 画廊页面 + kkFileView 文件预览集成
@@ -133,6 +134,21 @@ life-timeline/
 ---
 
 ## 变更记录
+
+### 2026-07-31 — v0.9.0 (Phase 12: 旅行足迹地图 + 地图方案探索)
+
+- **feat**: 旅行足迹地图页面 `/travel` — 从时间线事件自动提取地点
+- **feat**: TravelMap 组件 — ECharts + 中国 GeoJSON 矢量地图 + 省份高亮 + 星标标记
+  - 去过的省份蓝色高亮（城市名→省份映射表 + 中心点距离兜底）
+  - 去过城市黄色半透明五角星标记，大小按事件数缩放
+  - 支持缩放/拖拽，tooltip 显示关联事件
+- **feat**: `src/lib/geocode.ts` — Nominatim 免费地理编码 + 43 个中国城市预置坐标 + locations.json 缓存
+- **feat**: 导航栏新增「🗺️ 旅行」链接
+- **deps**: echarts（替代 leaflet/react-leaflet/@types/leaflet，已移除）
+- **note**: 读书观影清单模块代码框架已建立（`ConsumptionCard`/`ConsumptionList`/`consumptions.json`），暂不启用，列为远期待办
+- **technical**: 地图方案探索 — Leaflet(SSR 冲突+OSM 被墙) → D3 GeoJSON(路径渲染失败) → ECharts ✅
+  - URLSearchParams 编码问题导致 GitHub API 返回空（:/>+字符被编码为 %3A/%3E/%2B）
+  - client:load prop 序列化大数据丢失 → 改为组件内直接 import
 
 ### 2026-07-30 — v0.8.0 (Phase 11: GitHub 热门项目)
 

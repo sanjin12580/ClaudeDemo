@@ -655,6 +655,51 @@ longGoal: "${escapeYaml(longGoal || '')}"
           }
         });
       });
+
+      // === 保存清单数据（覆写 JSON） ===
+      server.middlewares.use('/api/write-consumptions', (req, res) => {
+        if (req.method !== 'POST') {
+          res.statusCode = 405;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: '仅支持 POST 方法' }));
+          return;
+        }
+
+        readBody(req).then((body) => {
+          try {
+            const { items } = JSON.parse(body);
+
+            if (!Array.isArray(items)) {
+              res.statusCode = 400;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: '缺少 items 数组' }));
+              return;
+            }
+
+            const dataDir = path.resolve(process.cwd(), 'src', 'data');
+            if (!fs.existsSync(dataDir)) {
+              fs.mkdirSync(dataDir, { recursive: true });
+            }
+
+            const filePath = path.join(dataDir, 'consumptions.json');
+            fs.writeFileSync(filePath, JSON.stringify({ items }, null, 2), 'utf-8');
+
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+              success: true,
+              path: path.relative(process.cwd(), filePath),
+            }));
+          } catch (err) {
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+              error: '保存失败',
+              detail: err instanceof Error ? err.message : String(err),
+            }));
+          }
+        });
+      });
+
     },
   };
 }

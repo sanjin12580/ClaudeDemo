@@ -1,0 +1,95 @@
+{
+  "items": [
+    {
+      "id": "c-001",
+      "title": "三体",
+      "type": "novel",
+      "status": "done",
+      "rating": 5,
+      "review": "中国科幻的巅峰之作。黑暗森林法则令人深思，程心的选择让人愤怒又无奈。最喜欢第二部《黑暗森林》，罗辑这个角色塑造得太好了。\n\n> 给岁月以文明，而不是给文明以岁月。",
+      "date": "2023-06",
+      "cover": "https://img1.doubanio.com/view/subject/l/public/s2768378.jpg",
+      "tags": [
+        "科幻",
+        "刘慈欣",
+        "中国"
+      ]
+    },
+    {
+      "id": "c-002",
+      "title": "攻壳机动队",
+      "type": "anime",
+      "status": "done",
+      "rating": 5,
+      "review": "赛博朋克的里程碑。押井守的电影版和神山健治的 TV 版各有千秋，探讨了意识、灵魂与人性的边界。",
+      "date": "2024-01",
+      "cover": "http://127.0.0.1:8012/onlinePreview?url=aHR0cDovLzEyNy4wLjAuMTo4MDEyL2RlbW8vMTc4NTQ2NDc1MDgzMS1Gcm9udC5qcGc%3D",
+      "tags": [
+        "科幻",
+        "赛博朋克",
+        "日本"
+      ]
+    },
+    {
+      "id": "c-003",
+      "title": "星际穿越",
+      "type": "movie",
+      "status": "done",
+      "rating": 5,
+      "review": "诺兰的宇宙诗篇。汉斯·季默的配乐让人起鸡皮疙瘩，\"不要温和地走进那个良夜\"。五维空间的视觉呈现令人惊叹。",
+      "date": "2022-09",
+      "cover": "",
+      "tags": [
+        "科幻",
+        "诺兰",
+        "太空"
+      ]
+    },
+    {
+      "id": "c-004",
+      "title": "葬送的芙莉莲",
+      "type": "anime",
+      "status": "doing",
+      "rating": 5,
+      "review": "温柔又感伤。精灵的时间感和人类的短暂生命形成鲜明对比。\"后来，勇者死了\"这句话每次看到都想哭。",
+      "date": "2024-05",
+      "cover": "",
+      "tags": [
+        "奇幻",
+        "治愈",
+        "日本"
+      ]
+    },
+    {
+      "id": "c-005",
+      "title": "黑客与画家",
+      "type": "book",
+      "status": "done",
+      "rating": 4,
+      "review": "Paul Graham 的文集，程序员必读。关于创业、编程语言设计和硅谷文化的思考很有启发，虽然有些观点已经过时。",
+      "date": "2024-03",
+      "cover": "",
+      "tags": [
+        "编程",
+        "创业",
+        "随笔"
+      ]
+    },
+    {
+      "id": "c-006",
+      "title": "进击的巨人",
+      "type": "anime",
+      "status": "done",
+      "rating": 5,
+      "review": "史诗级的作品。从单纯的战斗番到对战争、自由、民族主义的深刻反思。最终季的结局虽有争议，但整体不可否认是一部神作。",
+      "date": "2023-12",
+      "cover": "",
+      "tags": [
+        "奇幻",
+        "战斗",
+        "日本",
+        "反战"
+      ]
+    }
+  ]
+}
