@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import type { EventMeta, PostMeta, Profile, Goal, MediaItem, Category } from '../lib/types';
+import type { ConsumptionItem } from '../lib/parseConsumptions';
 import { CATEGORY_COLORS, ALLOWED_EXTENSIONS, classifyFileType, getIconForFile } from '../lib/types';
 import { useI18n } from '../lib/i18n';
 import { getFileUrl } from '../lib/filePreview';
@@ -9,7 +10,7 @@ const CATEGORIES: Category[] = ['教育', '工作', '旅行', '健康', '关系'
 // 所有允许上传的文件扩展名（扁平集合用于 accept 属性）
 const ALL_EXTENSIONS = Object.values(ALLOWED_EXTENSIONS).flat();
 
-type AdminMode = 'events' | 'posts' | 'profile' | 'goals' | 'media';
+type AdminMode = 'events' | 'posts' | 'profile' | 'goals' | 'media' | 'consumptions';
 
 interface FormData {
   date: string;
@@ -39,6 +40,7 @@ interface Props {
   profile: Profile | null;
   goals: Goal[];
   media: MediaItem[];
+  consumptions: ConsumptionItem[];
 }
 
 // ============================================================
@@ -67,7 +69,7 @@ function renderMarkdown(text: string): string {
 // ============================================================
 // 主组件
 // ============================================================
-export default function AdminPanel({ events: initialEvents, posts: initialPosts, profile: initialProfile, goals: initialGoals, media: initialMedia }: Props) {
+export default function AdminPanel({ events: initialEvents, posts: initialPosts, profile: initialProfile, goals: initialGoals, media: initialMedia, consumptions: initialConsumptions }: Props) {
   const { admin: t } = useI18n();
 
   // 模式切换
@@ -79,6 +81,8 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
   const [posts, setPosts] = useState<PostMeta[]>(initialPosts);
   // 目标列表
   const [goals, setGoals] = useState<Goal[]>(initialGoals);
+  // 清单列表
+  const [consumptions, setConsumptions] = useState<ConsumptionItem[]>(initialConsumptions);
 
   // 档案表单
   const [profileForm, setProfileForm] = useState({
@@ -113,6 +117,17 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
   };
   const [mediaForm, setMediaForm] = useState(EMPTY_MEDIA_FORM);
 
+  // 清单表单
+  const [consumptionId, setConsumptionId] = useState<string | null>(null);
+  const [consumptionTitle, setConsumptionTitle] = useState('');
+  const [consumptionType, setConsumptionType] = useState<'book' | 'novel' | 'movie' | 'tv' | 'anime' | 'variety' | 'music'>('book');
+  const [consumptionStatus, setConsumptionStatus] = useState<'done' | 'doing' | 'want'>('done');
+  const [consumptionRating, setConsumptionRating] = useState(3);
+  const [consumptionReview, setConsumptionReview] = useState('');
+  const [consumptionDate, setConsumptionDate] = useState(new Date().toISOString().slice(0, 7));
+  const [consumptionCover, setConsumptionCover] = useState('');
+  const [consumptionTags, setConsumptionTags] = useState('');
+
   // 列表筛选
   const [filterCategory, setFilterCategory] = useState<string>('全部');
   const [searchQuery, setSearchQuery] = useState('');
@@ -123,7 +138,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
   const [editTab, setEditTab] = useState<'edit' | 'preview'>('edit');
   const [status, setStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
-  const [deleteTarget, setDeleteTarget] = useState<EventMeta | PostMeta | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<EventMeta | PostMeta | { id: string; title: string; mode: string } | null>(null);
 
   // 图片上传
   const [uploading, setUploading] = useState(false);
@@ -294,6 +309,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
     setSelectedGoalId(null);
     setForm(EMPTY_FORM);
     setGoalForm(EMPTY_GOAL_FORM);
+    resetConsumptionForm();
     setEditTab('edit');
     setStatus('idle');
     setMessage('');
@@ -396,6 +412,33 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
     }
   }
 
+  // ========== 清单操作 ==========
+  function resetConsumptionForm() {
+    setConsumptionId(null);
+    setConsumptionTitle('');
+    setConsumptionType('book');
+    setConsumptionStatus('done');
+    setConsumptionRating(3);
+    setConsumptionReview('');
+    setConsumptionDate(new Date().toISOString().slice(0, 7));
+    setConsumptionCover('');
+    setConsumptionTags('');
+  }
+
+  function selectConsumption(id: string) {
+    const c = consumptions.find((x) => x.id === id);
+    if (!c) return;
+    setConsumptionId(c.id);
+    setConsumptionTitle(c.title);
+    setConsumptionType(c.type);
+    setConsumptionStatus(c.status);
+    setConsumptionRating(c.rating);
+    setConsumptionReview(c.review);
+    setConsumptionDate(c.date);
+    setConsumptionCover(c.cover || '');
+    setConsumptionTags(c.tags.join(', '));
+  }
+
   // ========== 目标操作 ==========
   const selectGoal = useCallback((goal: Goal) => {
     setSelectedGoalId(goal.id);
@@ -493,14 +536,102 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
     }
   }
 
+  // ========== 清单提交 ==========
+  async function handleConsumptionSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!consumptionTitle.trim()) {
+      alert('请填写标题');
+      return;
+    }
+    setStatus('saving');
+    setMessage('');
+
+    const newItem: ConsumptionItem = {
+      id: consumptionId || `c-${Date.now()}`,
+      title: consumptionTitle.trim(),
+      type: consumptionType,
+      status: consumptionStatus,
+      rating: consumptionRating,
+      review: consumptionReview,
+      date: consumptionDate,
+      cover: consumptionCover.trim(),
+      tags: consumptionTags.split(/[,，]/).map((t) => t.trim()).filter(Boolean),
+    };
+
+    const updated = consumptionId
+      ? consumptions.map((c) => (c.id === consumptionId ? newItem : c))
+      : [newItem, ...consumptions];
+
+    try {
+      const resp = await fetch('/api/write-consumptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: updated }),
+      });
+      const json = await resp.json();
+      if (resp.ok && json.success) {
+        setConsumptions(updated);
+        setStatus('success');
+        setMessage(t.consumptionSaved(json.path));
+        resetConsumptionForm();
+      }
+    } catch (err) {
+      setStatus('error');
+      setMessage(t.networkError(err instanceof Error ? err.message : ''));
+    }
+  }
+
+  function handleConsumptionDelete(id: string) {
+    const c = consumptions.find((x) => x.id === id);
+    if (!c) return;
+    setDeleteTarget({
+      id,
+      title: c.title,
+      mode: 'consumptions',
+    });
+    (document.getElementById('delete_modal') as HTMLDialogElement)?.showModal();
+  }
+
   // ========== 删除 ==========
   async function confirmDelete() {
     if (!deleteTarget) return;
+
+    // 清单删除
+    if ('mode' in deleteTarget && deleteTarget.mode === 'consumptions') {
+      const dt = deleteTarget;
+      const updated = consumptions.filter((c) => c.id !== dt.id);
+      try {
+        const resp = await fetch('/api/write-consumptions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: updated }),
+        });
+        const json = await resp.json();
+        if (resp.ok && json.success) {
+          setConsumptions(updated);
+          if (consumptionId === dt.id) resetConsumptionForm();
+          setMessage(t.deleted);
+          setStatus('success');
+        } else {
+          setMessage(json.error || t.deleteFailed);
+          setStatus('error');
+        }
+      } catch (err) {
+        setMessage(t.networkError(err instanceof Error ? err.message : t.unknownError));
+        setStatus('error');
+      }
+      setDeleteTarget(null);
+      return;
+    }
+
+    // 后续代码只处理 EventMeta | PostMeta
+    const target = deleteTarget as EventMeta | PostMeta;
+
     try {
       const apiPath = mode === 'events' ? '/api/delete-event' : '/api/delete-post';
       const filePath = mode === 'events'
-        ? `src/content/events/${deleteTarget.date.slice(0, 4)}/${deleteTarget.slug}.md`
-        : `src/content/blog/${deleteTarget.slug}.md`;
+        ? `src/content/events/${target.date.slice(0, 4)}/${target.slug}.md`
+        : `src/content/blog/${target.slug}.md`;
 
       const resp = await fetch(apiPath, {
         method: 'DELETE',
@@ -510,11 +641,11 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
       const data = await resp.json();
       if (resp.ok && data.success) {
         if (mode === 'events') {
-          setEvents((prev) => prev.filter((e) => e.slug !== deleteTarget.slug));
+          setEvents((prev) => prev.filter((e) => e.slug !== target.slug));
         } else {
-          setPosts((prev) => prev.filter((p) => p.slug !== deleteTarget.slug));
+          setPosts((prev) => prev.filter((p) => p.slug !== target.slug));
         }
-        if (selectedSlug === deleteTarget.slug) newItem();
+        if (selectedSlug === target.slug) newItem();
         setMessage(t.deleted);
         setStatus('success');
       } else {
@@ -587,7 +718,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
         </div>
 
         {/* 列表头部 — 仅在事件/文章模式下显示 */}
-        {mode !== 'profile' && mode !== 'goals' && (<>
+        {mode !== 'profile' && mode !== 'goals' && mode !== 'consumptions' && (<>
         <div className="p-4 border-b border-gray-200 dark:border-gray-800 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-sm">{mode === 'events' ? t.eventList : t.postList}</h2>
@@ -754,6 +885,44 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
           </>
         )}
 
+        {/* 清单列表 */}
+        {mode === 'consumptions' && (
+          <div className="flex flex-col h-full">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+              <h2 className="font-semibold text-sm">{t.tabConsumptions}</h2>
+              <span className="text-xs text-gray-400 dark:text-gray-500">{consumptions.length}</span>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2">
+              <button
+                className="btn btn-sm btn-ghost w-full mb-2 text-green-600"
+                onClick={resetConsumptionForm}
+              >
+                {t.consumptionNew}
+              </button>
+              {consumptions.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-8">{t.consumptionEmpty}</p>
+              ) : (
+                consumptions.map((c) => (
+                  <button
+                    key={c.id}
+                    className={`w-full text-left px-3 py-2 rounded-lg mb-1 text-xs transition-colors ${
+                      consumptionId === c.id
+                        ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                        : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                    }`}
+                    onClick={() => selectConsumption(c.id)}
+                  >
+                    <div className="font-medium truncate">{c.title}</div>
+                    <div className="text-[10px] text-gray-400 mt-0.5">
+                      {t.consumptionTypeOptions[c.type]} · {'⭐'.repeat(c.rating)} · {t.consumptionStatusOptions[c.status]}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
         {/* 媒体列表 */}
         {mode === 'media' && (
           <>
@@ -813,7 +982,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
       {/* ========== 右侧：编辑面板 ========== */}
       <main className="flex-1 flex flex-col min-w-0">
         {/* Tab 切换 */}
-        {mode !== 'profile' && mode !== 'goals' && mode !== 'media' && (selectedSlug || (mode === 'events' ? !initialEvents.some((e) => e.slug === selectedSlug) : !initialPosts.some((p) => p.slug === selectedSlug))) ? (
+        {mode !== 'profile' && mode !== 'goals' && mode !== 'consumptions' && mode !== 'media' && (selectedSlug || (mode === 'events' ? !initialEvents.some((e) => e.slug === selectedSlug) : !initialPosts.some((p) => p.slug === selectedSlug))) ? (
           <div className="flex items-center border-b border-gray-200 dark:border-gray-800 px-4">
             <button
               onClick={() => setEditTab('edit')}
@@ -1112,6 +1281,122 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
                   <span className={`text-xs ${status === 'success' ? 'text-green-600' : 'text-red-500'}`}>
                     {message}
                   </span>
+                )}
+              </div>
+            </form>
+          ) : mode === 'consumptions' ? (
+            <form onSubmit={handleConsumptionSubmit} className="space-y-4 max-w-xl">
+              <h3 className="font-semibold text-sm">
+                {consumptionId ? `编辑: ${consumptionTitle}` : t.consumptionNew}
+              </h3>
+
+              <div className="flex gap-4">
+                <label className="form-control flex-1">
+                  <div className="label"><span className="label-text text-xs">{t.consumptionTitle}</span></div>
+                  <input
+                    type="text"
+                    className="input input-bordered input-sm"
+                    value={consumptionTitle}
+                    onInput={(e) => setConsumptionTitle(e.currentTarget.value)}
+                    required
+                  />
+                </label>
+                <label className="form-control w-32">
+                  <div className="label"><span className="label-text text-xs">{t.consumptionDate}</span></div>
+                  <input
+                    type="text"
+                    className="input input-bordered input-sm"
+                    placeholder="2024-06"
+                    value={consumptionDate}
+                    onInput={(e) => setConsumptionDate(e.currentTarget.value)}
+                  />
+                </label>
+              </div>
+
+              <div className="flex gap-4">
+                <label className="form-control flex-1">
+                  <div className="label"><span className="label-text text-xs">{t.consumptionType}</span></div>
+                  <select className="select select-bordered select-sm" value={consumptionType} onChange={(e) => setConsumptionType(e.currentTarget.value as any)}>
+                    {Object.entries(t.consumptionTypeOptions).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="form-control flex-1">
+                  <div className="label"><span className="label-text text-xs">{t.consumptionStatus}</span></div>
+                  <select className="select select-bordered select-sm" value={consumptionStatus} onChange={(e) => setConsumptionStatus(e.currentTarget.value as any)}>
+                    {Object.entries(t.consumptionStatusOptions).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="form-control w-24">
+                  <div className="label"><span className="label-text text-xs">{t.consumptionRating}</span></div>
+                  <select className="select select-bordered select-sm" value={consumptionRating} onChange={(e) => setConsumptionRating(Number(e.currentTarget.value))}>
+                    {[1,2,3,4,5].map((n) => (<option key={n} value={n}>{'⭐'.repeat(n)}</option>))}
+                  </select>
+                </label>
+              </div>
+
+              <label className="form-control">
+                <div className="label">
+                  <span className="label-text text-xs">{t.consumptionCover}</span>
+                  <button
+                    type="button"
+                    className="btn btn-xs btn-ghost text-green-600"
+                    onClick={() => {
+                      if (!consumptionTitle.trim()) return;
+                      const catPath =
+                        consumptionType === 'book' || consumptionType === 'novel'
+                          ? 'book'
+                          : 'movie';
+                      window.open(
+                        `https://search.douban.com/${catPath}/subject_search?search_text=${encodeURIComponent(consumptionTitle)}`,
+                        '_blank',
+                      );
+                    }}
+                  >
+                    🔍 豆瓣搜封面
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  className="input input-bordered input-sm"
+                  placeholder="https://..."
+                  value={consumptionCover}
+                  onInput={(e) => setConsumptionCover(e.currentTarget.value)}
+                />
+              </label>
+
+              <label className="form-control">
+                <div className="label"><span className="label-text text-xs">{t.consumptionReview}</span></div>
+                <textarea
+                  className="textarea textarea-bordered text-sm h-32"
+                  placeholder="Markdown 格式，支持标题、引用、图片等..."
+                  value={consumptionReview}
+                  onInput={(e) => setConsumptionReview(e.currentTarget.value)}
+                />
+              </label>
+
+              <label className="form-control">
+                <div className="label"><span className="label-text text-xs">{t.consumptionTags}</span></div>
+                <input
+                  type="text"
+                  className="input input-bordered input-sm"
+                  placeholder="科幻, 刘慈欣"
+                  value={consumptionTags}
+                  onInput={(e) => setConsumptionTags(e.currentTarget.value)}
+                />
+              </label>
+
+              <div className="flex gap-2">
+                <button type="submit" className="btn btn-sm btn-primary" disabled={status === 'saving'}>
+                  {status === 'saving' ? t.savingBtn : t.submitBtn}
+                </button>
+                {consumptionId && (
+                  <button type="button" className="btn btn-sm btn-error btn-outline" onClick={() => handleConsumptionDelete(consumptionId)}>
+                    {t.deleteBtn}
+                  </button>
                 )}
               </div>
             </form>

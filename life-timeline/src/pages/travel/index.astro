@@ -1,0 +1,74 @@
+---
+// ============================================================
+// /travel — 旅行足迹地图（D3.js + GeoJSON 矢量地图）
+// 从时间线事件中提取地点，在地图上点亮足迹
+// ============================================================
+
+import Layout from '../../layouts/Layout.astro';
+import TravelMap from '../../components/TravelMap';
+import { loadEvents } from '../../lib/parseEvents';
+import { geocodeLocation, loadLocationCache } from '../../lib/geocode';
+import type { TravelSpot } from '../../components/TravelMap';
+
+// 加载所有事件（只取公开事件）
+const events = await loadEvents(false);
+
+// 提取有地点的事件，按地点分组
+const byLocation = new Map<string, typeof events>();
+for (const ev of events) {
+  if (!ev.location) continue;
+  const loc = ev.location.trim();
+  if (!byLocation.has(loc)) byLocation.set(loc, []);
+  byLocation.get(loc)!.push(ev);
+}
+
+// 加载坐标缓存，为新地点调用地理编码
+const cache = loadLocationCache();
+const spots: TravelSpot[] = [];
+
+for (const [name, evs] of byLocation) {
+  const geo = await geocodeLocation(name, cache);
+  if (!geo) continue;
+
+  spots.push({
+    location: geo,
+    events: evs
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .map((e) => ({
+        title: e.title,
+        date: e.date,
+        slug: e.slug,
+      })),
+  });
+}
+
+// 按事件时间排序（最新在前）
+spots.sort(
+  (a, b) =>
+    new Date(b.events[0]?.date ?? 0).getTime() -
+    new Date(a.events[0]?.date ?? 0).getTime(),
+);
+---
+
+<Layout
+  title="🗺️ 旅行足迹"
+  description="从人生时间线中提取的地点标记，展示旅行和生活足迹"
+>
+  <h1 className="text-2xl font-bold mb-2 flex items-center gap-2">
+    🗺️ 旅行足迹
+  </h1>
+  <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+    从时间线事件中自动提取地点，点亮每一段旅程
+  </p>
+
+  {
+    spots.length > 0 ? (
+      <TravelMap spots={spots} client:load />
+    ) : (
+      <div className="text-center py-20 text-gray-400 dark:text-gray-500">
+        <p className="text-4xl mb-4">🗺️</p>
+        <p>暂无旅行记录，去时间线添加带有地点的事件吧</p>
+      </div>
+    )
+  }
+</Layout>
