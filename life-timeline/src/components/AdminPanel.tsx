@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import type { EventMeta, PostMeta, Profile, Goal, MediaItem, Category } from '../lib/types';
-import type { ConsumptionItem } from '../lib/parseConsumptions';
+import type { ConsumptionItem, MetadataCandidate } from '../lib/parseConsumptions';
 import { CATEGORY_COLORS, ALLOWED_EXTENSIONS, classifyFileType, getIconForFile } from '../lib/types';
 import { useI18n } from '../lib/i18n';
 import { getFileUrl } from '../lib/filePreview';
@@ -127,6 +127,14 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
   const [consumptionDate, setConsumptionDate] = useState(new Date().toISOString().slice(0, 7));
   const [consumptionCover, setConsumptionCover] = useState('');
   const [consumptionTags, setConsumptionTags] = useState('');
+  const [consumptionYear, setConsumptionYear] = useState('');
+  const [consumptionAuthor, setConsumptionAuthor] = useState('');
+  const [consumptionSource, setConsumptionSource] = useState<'tmdb' | 'douban' | 'manual' | undefined>(undefined);
+  const [consumptionSourceId, setConsumptionSourceId] = useState('');
+  const [consumptionSourceUrl, setConsumptionSourceUrl] = useState('');
+  const [metadataCandidates, setMetadataCandidates] = useState<MetadataCandidate[]>([]);
+  const [metadataHint, setMetadataHint] = useState('');
+  const [fetchingMeta, setFetchingMeta] = useState(false);
 
   // 列表筛选
   const [filterCategory, setFilterCategory] = useState<string>('全部');
@@ -423,6 +431,14 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
     setConsumptionDate(new Date().toISOString().slice(0, 7));
     setConsumptionCover('');
     setConsumptionTags('');
+    setConsumptionYear('');
+    setConsumptionAuthor('');
+    setConsumptionSource(undefined);
+    setConsumptionSourceId('');
+    setConsumptionSourceUrl('');
+    setMetadataCandidates([]);
+    setMetadataHint('');
+    setFetchingMeta(false);
   }
 
   function selectConsumption(id: string) {
@@ -437,6 +453,71 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
     setConsumptionDate(c.date);
     setConsumptionCover(c.cover || '');
     setConsumptionTags(c.tags.join(', '));
+    setConsumptionYear(c.year ? String(c.year) : '');
+    setConsumptionAuthor(c.author ?? '');
+    setConsumptionSource(c.source);
+    setConsumptionSourceId(c.sourceId ?? '');
+    setConsumptionSourceUrl(c.sourceUrl ?? '');
+    setMetadataCandidates([]);
+    setMetadataHint('');
+  }
+
+  // ========== 元数据自动获取 ==========
+  async function handleFetchMetadata() {
+    if (!consumptionTitle.trim()) {
+      alert('请先填写标题');
+      return;
+    }
+    setFetchingMeta(true);
+    setMetadataCandidates([]);
+    setMetadataHint('');
+    try {
+      const url =
+        `/api/fetch-metadata?type=${encodeURIComponent(consumptionType)}` +
+        `&title=${encodeURIComponent(consumptionTitle.trim())}`;
+      const resp = await fetch(url);
+      const json = await resp.json();
+      if (!resp.ok || !json.success) {
+        setMetadataHint(json.error || t.consumptionFetchFailed);
+      } else {
+        setMetadataCandidates(json.candidates ?? []);
+        setMetadataHint(json.hint ?? '');
+      }
+    } catch {
+      setMetadataHint(t.consumptionFetchFailed);
+    } finally {
+      setFetchingMeta(false);
+    }
+  }
+
+  async function applyMetadataCandidate(c: MetadataCandidate) {
+    setFetchingMeta(true);
+    setMetadataHint(t.consumptionSavingCover);
+    let cover = c.cover;
+    try {
+      // 下载到本地 public/covers/，避免豆瓣防盗链导致封面加载失败
+      const resp = await fetch('/api/save-cover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: c.cover }),
+      });
+      const json = await resp.json();
+      if (resp.ok && json.success && json.url) {
+        cover = json.url;
+      }
+    } catch {
+      // 下载失败时回退到远程 URL
+    }
+    setConsumptionTitle(c.title);
+    if (c.year) setConsumptionYear(String(c.year));
+    if (c.author) setConsumptionAuthor(c.author);
+    setConsumptionCover(cover);
+    setConsumptionSource(c.source);
+    setConsumptionSourceId(c.sourceId);
+    setConsumptionSourceUrl(c.sourceUrl ?? '');
+    setMetadataCandidates([]);
+    setMetadataHint('');
+    setFetchingMeta(false);
   }
 
   // ========== 目标操作 ==========
@@ -555,6 +636,11 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
       review: consumptionReview,
       date: consumptionDate,
       cover: consumptionCover.trim(),
+      ...(consumptionYear ? { year: Number(consumptionYear) } : {}),
+      ...(consumptionAuthor ? { author: consumptionAuthor.trim() } : {}),
+      ...(consumptionSource ? { source: consumptionSource } : {}),
+      ...(consumptionSourceId ? { sourceId: consumptionSourceId.trim() } : {}),
+      ...(consumptionSourceUrl ? { sourceUrl: consumptionSourceUrl.trim() } : {}),
       tags: consumptionTags.split(/[,，]/).map((t) => t.trim()).filter(Boolean),
     };
 
@@ -714,6 +800,16 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
               }`}
           >
             {t.tabMedia}
+          </button>
+          <button
+            onClick={() => switchMode('consumptions')}
+            className={`flex-1 text-sm px-4 py-3 transition-colors font-medium
+              ${mode === 'consumptions'
+                ? 'text-green-600 dark:text-green-400 border-b-2 border-green-500 bg-white dark:bg-gray-900'
+                : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 border-b-2 border-transparent'
+              }`}
+          >
+            {t.tabConsumptions}
           </button>
         </div>
 
@@ -1315,6 +1411,31 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
 
               <div className="flex gap-4">
                 <label className="form-control flex-1">
+                  <div className="label"><span className="label-text text-xs">{t.consumptionAuthor}</span></div>
+                  <input
+                    type="text"
+                    className="input input-bordered input-sm"
+                    placeholder="刘慈欣 / 克里斯托弗·诺兰"
+                    value={consumptionAuthor}
+                    onInput={(e) => setConsumptionAuthor(e.currentTarget.value)}
+                  />
+                </label>
+                <label className="form-control w-32">
+                  <div className="label"><span className="label-text text-xs">{t.consumptionYear}</span></div>
+                  <input
+                    type="number"
+                    min={1900}
+                    max={2100}
+                    className="input input-bordered input-sm"
+                    placeholder="2014"
+                    value={consumptionYear}
+                    onInput={(e) => setConsumptionYear(e.currentTarget.value)}
+                  />
+                </label>
+              </div>
+
+              <div className="flex gap-4">
+                <label className="form-control flex-1">
                   <div className="label"><span className="label-text text-xs">{t.consumptionType}</span></div>
                   <select className="select select-bordered select-sm" value={consumptionType} onChange={(e) => setConsumptionType(e.currentTarget.value as any)}>
                     {Object.entries(t.consumptionTypeOptions).map(([k, v]) => (
@@ -1343,20 +1464,11 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
                   <span className="label-text text-xs">{t.consumptionCover}</span>
                   <button
                     type="button"
-                    className="btn btn-xs btn-ghost text-green-600"
-                    onClick={() => {
-                      if (!consumptionTitle.trim()) return;
-                      const catPath =
-                        consumptionType === 'book' || consumptionType === 'novel'
-                          ? 'book'
-                          : 'movie';
-                      window.open(
-                        `https://search.douban.com/${catPath}/subject_search?search_text=${encodeURIComponent(consumptionTitle)}`,
-                        '_blank',
-                      );
-                    }}
+                    className="btn btn-xs btn-primary"
+                    onClick={handleFetchMetadata}
+                    disabled={fetchingMeta}
                   >
-                    🔍 豆瓣搜封面
+                    {fetchingMeta ? t.consumptionFetching : t.consumptionAutoFetch}
                   </button>
                 </div>
                 <input
@@ -1366,6 +1478,42 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
                   value={consumptionCover}
                   onInput={(e) => setConsumptionCover(e.currentTarget.value)}
                 />
+                {
+                  metadataCandidates.length > 0 && (
+                    <div className="mt-2 space-y-1.5">
+                      <div className="text-[11px] text-gray-400">{t.consumptionCandidates}</div>
+                      {metadataCandidates.map((c, idx) => (
+                        <button
+                          key={`${c.source}-${c.sourceId}-${idx}`}
+                          type="button"
+                          onClick={() => applyMetadataCandidate(c)}
+                          className="w-full flex items-center gap-3 p-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-green-500 dark:hover:border-green-500 transition-colors text-left"
+                        >
+                          {
+                            c.cover ? (
+                              <img
+                                src={`/api/img-proxy?url=${encodeURIComponent(c.cover)}`}
+                                alt={c.title}
+                                className="w-8 h-11 object-cover rounded shrink-0"
+                              />
+                            ) : (
+                              <div className="w-8 h-11 rounded bg-gray-100 dark:bg-gray-800 shrink-0" />
+                            )
+                          }
+                          <div className="min-w-0">
+                            <div className="text-xs font-medium truncate">{c.title}</div>
+                            <div className="text-[10px] text-gray-400 truncate">
+                              {[c.year, c.author, c.desc].filter(Boolean).join(' · ')}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )
+                }
+                {metadataHint && (
+                  <p className="mt-1.5 text-[11px] text-gray-400">{metadataHint}</p>
+                )}
               </label>
 
               <label className="form-control">

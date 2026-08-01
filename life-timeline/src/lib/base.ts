@@ -5,6 +5,18 @@ export function to(p: string): string {
   return `${BASE}/${p.replace(/^\//, '')}`;
 }
 
+/**
+ * 封面 URL 工具：本地 /covers/ 路径补全站点 base，远程 URL 原样返回
+ * 封面保存到 public/covers/ 后以无 base 路径存储，渲染时统一补全
+ */
+export function coverUrl(url: string): string {
+  if (!url) return '';
+  if (url.startsWith('/covers/') || url.startsWith('covers/')) {
+    return to(url.replace(/^\/+/, ''));
+  }
+  return url;
+}
+
 // ============================================================
 // 共享工具函数
 // ============================================================

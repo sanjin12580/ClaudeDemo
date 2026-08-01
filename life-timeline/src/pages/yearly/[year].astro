@@ -9,7 +9,7 @@ import { loadLifeStats } from '../../lib/stats';
 import { loadEvents } from '../../lib/parseEvents';
 import { renderStars } from '../../lib/parseConsumptions';
 import { t } from '../../lib/i18n';
-import { to } from '../../lib/base';
+import { to, coverUrl } from '../../lib/base';
 
 export async function getStaticPaths() {
   const stats = await loadLifeStats();
@@ -121,7 +121,7 @@ const goalCategoryLabel = (category: string) =>
                 <div class="flex items-center gap-3 card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-3 shadow-sm">
                   {
                     c.cover ? (
-                      <img src={c.cover} alt={c.title} class="w-12 h-16 object-cover rounded shrink-0" loading="lazy" />
+                      <img src={coverUrl(c.cover)} alt={c.title} class="w-12 h-16 object-cover rounded shrink-0" loading="lazy" />
                     ) : (
                       <div class="w-12 h-16 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xl shrink-0">📚</div>
                     )

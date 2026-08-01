@@ -1,6 +1,6 @@
 # 人生时间线 — 开发日志
 
-> 最后更新：2026-08-01 (v1.0.0)
+> 最后更新：2026-08-01 (v1.1.1)
 
 ---
 
@@ -56,6 +56,14 @@
 - [x] **统计层** `src/lib/stats.ts` — 构建时聚合事件/博客/清单/目标/媒体/档案数据；`CITY_PROVINCE` 提取到 `regions.ts` 供地图与统计共用
 - [x] **dev** — 补装 `@types/node`，修复 astro check 既有 Node 类型错误与 travel/consumptions 页面 `className` 笔误
 
+### v1.1.0: 读书观影清单重构（Phase 14）
+- [x] **状态分栏管理** — `/consumptions` 改为「想看 / 在看 / 看过」三栏视图 + 计数，每条为紧凑列表行
+- [x] **时间轴视图** — 只展示"看过"，按年份倒序分组，带日期与完整短评，像观影日记
+- [x] **详情页** `/consumptions/[id]` — 封面 + 元数据 + 完整 Markdown 感受 + 豆瓣/TMDB 来源链接
+- [x] **元数据自动获取** — 管理后台「清单」Tab 启用；影视/动漫走 TMDB（`TMDB_API_KEY` 存 `.env.local`），书籍/小说走豆瓣搜索页解析；候选选择后自动填充
+- [x] **数据模型升级** — 新增 `year` / `author` / `source` / `sourceId` / `sourceUrl` 字段，向后兼容
+- [x] **导航入口** — 导航新增「📚 清单」，页面文案全部走 i18n
+
 ---
 
 ## 技术栈
@@ -87,12 +95,14 @@ life-timeline/
 │   │   ├── EventCard.tsx       # 事件卡片
 │   │   ├── AdminPanel.tsx      # 管理面板
 │   │   ├── DashboardCharts.tsx # 总览图表
-│   │   └── StatsStrip.astro    # 首页统计条
+│   │   ├── StatsStrip.astro    # 首页统计条
+│   │   └── ConsumptionList.tsx # 清单（分栏 + 时间轴）
 │   ├── layouts/
 │   │   └── Layout.astro        # 基础布局
 │   ├── lib/
 │   │   ├── types.ts            # 类型定义
 │   │   ├── parseEvents.ts      # 事件解析
+│   │   ├── parseConsumptions.ts# 清单数据与类型
 │   │   ├── i18n.ts             # 多语言工具
 │   │   ├── stats.ts            # 人生统计聚合
 │   │   ├── anniversaries.ts    # 纪念日计算
@@ -103,6 +113,9 @@ life-timeline/
 │   │   ├── yearly/
 │   │   │   ├── index.astro     # 年度回顾索引
 │   │   │   └── [year].astro    # 单年度详情
+│   │   ├── consumptions/
+│   │   │   ├── index.astro     # 读书观影清单
+│   │   │   └── [id].astro      # 单条详情
 │   │   ├── timeline/
 │   │   │   ├── index.astro     # 完整时间线
 │   │   │   └── [year].astro    # 年份详情
@@ -143,7 +156,7 @@ life-timeline/
 
 ### 后续子系统（远期）
 - [ ] 生活数据追踪（健康/财务/阅读/习惯）
-- [ ] **读书观影清单** — 已建数据模型和组件框架，需重新设计交互流程（豆瓣封面自动拉取等）
+- [x] **读书观影清单** — 状态分栏 + 时间轴 + 详情页 + TMDB/豆瓣元数据自动拉取
 - [x] 思想花园（博客/随笔/笔记）
 - [x] 个人档案页（基本资料 + 关系图谱）
 - [x] 多媒体档案 — 画廊页面 + kkFileView 文件预览集成
@@ -152,6 +165,25 @@ life-timeline/
 ---
 
 ## 变更记录
+
+### 2026-08-01 — v1.1.1 (维护：封面本地化 + 元数据兜底)
+
+- **fix**: 豆瓣图片 CDN 防盗链导致封面加载失败（418/403）— 新增 `/api/save-cover` 服务端下载封面到 `public/covers/`，页面使用本地文件
+- **fix**: 后台候选缩略图被豆瓣防盗链拦截 — 新增 `/api/img-proxy` 代理
+- **fix**: TMDB API 网络不稳定时无结果 — 影视/动漫改为 TMDB 与豆瓣并行竞速，谁先返回用谁，失败自动兜底
+- **fix**: Vite 插件读不到 `.env.local` — 改用 `loadEnv()` 并基于插件文件目录定位，不再依赖 `process.env` 与启动 cwd
+- **feat**: `coverUrl()` 工具 — 本地 `/covers/` 路径渲染时自动补站点 base，保证本地与线上一致
+- **data**: 6 条示例封面全部下载到 `public/covers/`，替换失效的 `127.0.0.1` 与外链 URL
+
+### 2026-08-01 — v1.1.0 (Phase 14: 读书观影清单重构)
+
+- **feat**: `/consumptions` 重构 — 「状态管理」三栏（想看/在看/看过）+ 「时间轴」（按看完日期分组）+ 标题/作者/标签搜索
+- **feat**: 详情页 `/consumptions/[id]` — 服务端渲染完整 Markdown 感受，含年份/作者/来源链接
+- **feat**: 管理后台「📚 清单」Tab 启用 — 新增 年份/作者 字段与「🪄 自动获取元数据」（候选选择后自动填充封面与元数据）
+- **feat**: `/api/fetch-metadata` — 影视/动漫走 TMDB（key 存 `.env.local`），书籍/小说走豆瓣搜索页内嵌 JSON 解析；综艺/音乐提示手动填写
+- **feat**: 数据模型新增 `year`/`author`/`source`/`sourceId`/`sourceUrl`，旧数据兼容
+- **fix**: 删除不再使用的 ConsumptionCard；travel 页面 `className` → `class`
+- **deps**: 补装 `@types/node`（本分支基于 main，尚未包含此前修复）
 
 ### 2026-08-01 — v1.0.0 (Phase 13: 人生仪表盘)
 
@@ -330,3 +362,36 @@ life-timeline/
 - **feat**: 年份详情页（静态预渲染）
 - **feat**: 管理后台（AdminForm + Vite API）
 - **feat**: 5 个示例事件
+
+---
+
+## 踩坑记录（开发备忘）
+
+> 记录开发中遇到的问题与解决方案，防止再次踩坑。
+
+### 2026-08-01 — 读书观影清单（Phase 14）
+
+**1. 豆瓣图片 CDN 防盗链（418 / 403）**
+
+- 现象：从站内直接 `<img src="https://img*.doubanio.com/...">`，只有个别封面能显示，其余加载失败（浏览器 Referer 非豆瓣域名时返回 403/418）
+- 定位：`curl` 无 Referer → 418；带 `Referer: https://movie.douban.com/` 或 `https://book.douban.com/` → 200
+- 解决：服务端下载封面到本地 `public/covers/`（请求时按 URL 类型带豆瓣 Referer，`/view/subject/` → book.douban.com，`/view/photo/` → movie.douban.com），页面用本地文件；后台候选缩略图走 `/api/img-proxy` 代理
+- 教训：第三方图床/资源默认不可假设可热链，展示型外部资源优先本地化（下载到 `public/` 或自己的媒体服务）
+
+**2. TMDB API 认证与网络**
+
+- v3 API Key 用 `?api_key=` 查询参数（见官方 getting-started）；用 `Authorization: Bearer <v3 key>` 会返回 401（Bearer 只适用于 v4 Read Access Token，可放 `.env.local` 的 `TMDB_READ_TOKEN`）
+- 国内网络访问 `api.themoviedb.org` 不稳定（时通时断），`image.tmdb.org` 相对稳定
+- 解决：影视/动漫元数据用 **TMDB 与豆瓣并行竞速**（`Promise.race`，谁先返回有效结果用谁），TMDB 失败自动兜底豆瓣；所有外部请求带超时 + 重试（2 次指数退避）；错误信息包含 HTTP 状态与 TMDB 的 `status_message`，便于排查
+
+**3. Vite 插件读不到 `.env.local`**
+
+- 现象：`process.env.TMDB_API_KEY` 在 dev server 中一直为空
+- 原因：Vite 不会把 `.env` 注入 `process.env`，需要 `loadEnv(mode, dir, '')`；且目录要基于**插件文件所在目录**（`path.dirname(fileURLToPath(import.meta.url))`），不能依赖 `process.cwd()`（启动目录可能不同）
+- 解决：封装 `readEnv()` 统一读取进程环境变量与插件目录的 `.env`
+
+**4. Astro base 与 Vite 插件**
+
+- 现象：vite 插件 `configResolved` 里 `config.base` 是 `"/"`，拿不到 `/ClaudeDemo`
+- 原因：Astro 的 `base` 由 Astro 自己处理，不透传给内层 Vite 配置
+- 解决：封面等资源存**无 base 路径**（如 `/covers/xxx.jpg`），渲染时用 `coverUrl()`（内部调 `to()`）补全 `/ClaudeDemo` 前缀，本地与线上 GitHub Pages 表现一致

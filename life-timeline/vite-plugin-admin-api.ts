@@ -1,11 +1,21 @@
-import type { Plugin } from 'vite';
+import { loadEnv, type Plugin } from 'vite';
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
+import { fileURLToPath } from 'node:url';
+import type { MetadataCandidate } from './src/lib/parseConsumptions';
 
 /** kkFileView 服务地址 */
 const KKFILEVIEW_HOST = 'localhost';
 const KKFILEVIEW_PORT = 8012;
+
+/** 插件所在目录（用于稳定读取 .env.local，不依赖启动时的 cwd） */
+const PLUGIN_DIR = path.dirname(fileURLToPath(import.meta.url));
+
+/** 从进程环境变量或插件目录的 .env 读取配置 */
+function readEnv(key: string): string {
+  return process.env[key] || loadEnv('development', PLUGIN_DIR, '')[key] || '';
+}
 
 // ============================================================
 // 安全工具函数
@@ -123,6 +133,7 @@ function uploadToKkFileView(filename: string, buffer: Buffer): Promise<string> {
 export function adminApiPlugin(): Plugin {
   return {
     name: 'admin-api',
+
     configureServer(server) {
       // === 上传文件（代理到 kkFileView） ===
       server.middlewares.use('/api/upload-file', (req, res) => {
@@ -700,8 +711,327 @@ longGoal: "${escapeYaml(longGoal || '')}"
         });
       });
 
+      // === 元数据自动获取（TMDB 影视 + 豆瓣书籍） ===
+      server.middlewares.use('/api/fetch-metadata', async (req, res) => {
+        res.setHeader('Content-Type', 'application/json');
+
+        const url = new URL(req.url ?? '/', 'http://localhost');
+        const type = url.searchParams.get('type') ?? '';
+        const title = (url.searchParams.get('title') ?? '').trim();
+
+        if (!title) {
+          res.statusCode = 400;
+          res.end(JSON.stringify({ success: false, error: '缺少 title 参数' }));
+          return;
+        }
+
+        try {
+          let candidates: MetadataCandidate[] = [];
+          let hint = '';
+
+          if (type === 'movie' || type === 'tv' || type === 'anime') {
+            // TMDB 与豆瓣竞速：谁先返回有效结果用谁，避免网络差时干等 TMDB 重试
+            const tmdbP = tmdbSearch(type, title).then(
+              (c) => ({ kind: 'tmdb' as const, candidates: c, error: '' }),
+              (e) => ({
+                kind: 'tmdb' as const,
+                candidates: [] as MetadataCandidate[],
+                error: e instanceof Error ? e.message : String(e),
+              }),
+            );
+            const doubanP = doubanSearch('movie', title).then(
+              (c) => ({ kind: 'douban' as const, candidates: c, error: '' }),
+              (e) => ({
+                kind: 'douban' as const,
+                candidates: [] as MetadataCandidate[],
+                error: e instanceof Error ? e.message : String(e),
+              }),
+            );
+            const first = await Promise.race([tmdbP, doubanP]);
+            if (first.kind === 'tmdb' && first.candidates.length > 0) {
+              candidates = first.candidates;
+            } else {
+              // TMDB 无结果或失败 → 等豆瓣结果
+              const doubanR = await doubanP;
+              if (doubanR.candidates.length > 0) {
+                candidates = doubanR.candidates;
+                hint = first.error
+                  ? `TMDB 暂不可用（${first.error}），已改用豆瓣结果`
+                  : 'TMDB 没有找到匹配结果，已改用豆瓣结果';
+              } else {
+                hint = first.error
+                  ? `TMDB: ${first.error}；豆瓣: ${doubanR.error}`
+                  : `豆瓣: ${doubanR.error}`;
+              }
+            }
+          } else if (type === 'book' || type === 'novel') {
+            candidates = await doubanSearch('book', title);
+            if (candidates.length === 0) hint = '豆瓣没有找到匹配结果，可手动填写';
+          } else {
+            hint = '综艺/音乐暂不支持自动获取，请手动填写';
+          }
+
+          res.end(JSON.stringify({ success: true, candidates, hint }));
+        } catch (err) {
+          res.statusCode = 502;
+          res.end(JSON.stringify({
+            success: false,
+            error: err instanceof Error ? err.message : String(err),
+          }));
+        }
+      });
+
+      // === 下载封面到本地 public/covers/（解决豆瓣图片防盗链） ===
+      server.middlewares.use('/api/save-cover', (req, res) => {
+        if (req.method !== 'POST') {
+          res.statusCode = 405;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: '仅支持 POST 方法' }));
+          return;
+        }
+
+        readBody(req).then((body) => {
+          try {
+            const { url } = JSON.parse(body);
+            if (!url || !/^https?:\/\//.test(url)) {
+              res.statusCode = 400;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: '缺少有效的 url 参数' }));
+              return;
+            }
+
+            downloadCover(url).then(({ buffer, ext }) => {
+              const dir = path.resolve(process.cwd(), 'public', 'covers');
+              fs.mkdirSync(dir, { recursive: true });
+              const filename = `cover-${Date.now()}-${simpleHash(url)}.${ext}`;
+              fs.writeFileSync(path.join(dir, filename), buffer);
+
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({
+                success: true,
+                url: `/covers/${filename}`,
+                path: `public/covers/${filename}`,
+              }));
+            }).catch((err) => {
+              res.statusCode = 502;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({
+                success: false,
+                error: err instanceof Error ? err.message : String(err),
+              }));
+            });
+          } catch (err) {
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+              success: false,
+              error: err instanceof Error ? err.message : String(err),
+            }));
+          }
+        });
+      });
+
+      // === 图片代理（给后台候选缩略图用，带豆瓣 Referer 绕过防盗链） ===
+      server.middlewares.use('/api/img-proxy', async (req, res) => {
+        const url = new URL(req.url ?? '/', 'http://localhost');
+        const target = url.searchParams.get('url') ?? '';
+        if (!/^https?:\/\//.test(target)) {
+          res.statusCode = 400;
+          res.end('bad url');
+          return;
+        }
+        try {
+          const resp = await fetchWithRetry(target, { headers: coverRequestHeaders(target) }, 2, 12000);
+          if (!resp.ok) {
+            res.statusCode = 502;
+            res.end('proxy failed');
+            return;
+          }
+          res.setHeader('Content-Type', resp.headers.get('content-type') || 'image/jpeg');
+          res.setHeader('Cache-Control', 'public, max-age=86400');
+          res.end(Buffer.from(await resp.arrayBuffer()));
+        } catch {
+          res.statusCode = 502;
+          res.end('proxy failed');
+        }
+      });
+
     },
   };
+}
+
+// ============================================================
+// 元数据获取 — TMDB（影视/动漫） + 豆瓣（书籍/小说）
+// TMDB API Key 从环境变量读取（life-timeline/.env.local，已被 gitignore）
+// ============================================================
+
+const TMDB_API_URL = 'https://api.themoviedb.org/3';
+const TMDB_IMAGE_URL = 'https://image.tmdb.org/t/p/w500';
+const DOUBAN_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+
+/** 封面请求头：豆瓣域名需带 Referer 绕过防盗链 */
+function coverRequestHeaders(url: string): Record<string, string> {
+  const headers: Record<string, string> = { 'User-Agent': DOUBAN_UA };
+  if (url.includes('doubanio.com') || url.includes('douban.com')) {
+    headers.Referer = url.includes('/view/subject/')
+      ? 'https://book.douban.com/'
+      : 'https://movie.douban.com/';
+  }
+  return headers;
+}
+
+/** 下载封面图片，校验类型与大小 */
+async function downloadCover(url: string): Promise<{ buffer: Buffer; ext: string }> {
+  const resp = await fetchWithRetry(url, { headers: coverRequestHeaders(url) }, 2, 12000);
+  if (!resp.ok) {
+    throw new Error(`下载封面失败（HTTP ${resp.status}）`);
+  }
+  const contentType = resp.headers.get('content-type') || '';
+  const ext = contentType.includes('png')
+    ? 'png'
+    : contentType.includes('webp')
+      ? 'webp'
+      : contentType.includes('gif')
+        ? 'gif'
+        : 'jpg';
+  const buffer = Buffer.from(await resp.arrayBuffer());
+  if (buffer.length === 0 || buffer.length > 8 * 1024 * 1024) {
+    throw new Error('封面文件为空或超过 8MB');
+  }
+  return { buffer, ext };
+}
+
+/** 带超时与重试的 fetch（网络不稳定时最多重试 3 次，指数退避） */
+async function fetchWithRetry(
+  url: string,
+  init?: RequestInit,
+  attempts = 3,
+  timeoutMs = 15000,
+): Promise<Response> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      const resp = await fetch(url, { ...init, signal: controller.signal });
+      clearTimeout(timer);
+      // 认证错误无需重试（说明 key/token 有问题）
+      if (resp.status === 401) return resp;
+      if (resp.ok) return resp;
+      lastErr = new Error(`HTTP ${resp.status}`);
+    } catch (err) {
+      lastErr = err;
+    }
+    if (i < attempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 800 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
+/** TMDB 搜索（movie 用电影接口，tv/anime 用剧集接口），返回前 3 个候选 */
+async function tmdbSearch(type: string, query: string): Promise<MetadataCandidate[]> {
+  const apiKey = readEnv('TMDB_API_KEY');
+  const readToken = readEnv('TMDB_READ_TOKEN');
+  if (!apiKey && !readToken) {
+    throw new Error('未配置 TMDB_API_KEY / TMDB_READ_TOKEN（请在 life-timeline/.env.local 中设置）');
+  }
+
+  const kind = type === 'movie' ? 'movie' : 'tv';
+  const queryParams = `query=${encodeURIComponent(query)}&language=zh-CN&page=1`;
+  const searchUrl = readToken
+    ? `${TMDB_API_URL}/search/${kind}?${queryParams}`
+    : `${TMDB_API_URL}/search/${kind}?api_key=${encodeURIComponent(apiKey)}&${queryParams}`;
+  const init: RequestInit = readToken
+    ? { headers: { Authorization: `Bearer ${readToken}`, accept: 'application/json' } }
+    : {};
+
+  const resp = await fetchWithRetry(searchUrl, init, 2, 10000);
+  if (!resp.ok) {
+    let detail = '';
+    try {
+      const body = await resp.json();
+      detail = body.status_message || body.status_code || '';
+    } catch {
+      // ignore
+    }
+    throw new Error(`TMDB 请求失败（HTTP ${resp.status}${detail ? `：${detail}` : ''}），请检查 API Key 与网络`);
+  }
+
+  const data = await resp.json();
+  const results: any[] = Array.isArray(data.results) ? data.results.slice(0, 3) : [];
+  return results
+    .map((r) => ({
+      title: r.title || r.name || r.original_title || r.original_name || '',
+      year: parseInt((r.release_date || r.first_air_date || '').slice(0, 4), 10) || undefined,
+      cover: r.poster_path ? `${TMDB_IMAGE_URL}${r.poster_path}` : '',
+      source: 'tmdb' as const,
+      sourceId: String(r.id),
+      sourceUrl: `https://www.themoviedb.org/${kind}/${r.id}`,
+      desc: (r.overview || '').slice(0, 120),
+    }))
+    .filter((c) => c.title);
+}
+
+let lastDoubanCall = 0;
+
+/** 豆瓣搜索（带浏览器 UA，解析页面内嵌的 __DATA__ JSON），返回前 3 个候选 */
+async function doubanSearch(category: 'book' | 'movie', query: string): Promise<MetadataCandidate[]> {
+  // 豆瓣限速：每次请求间隔至少 1.5s
+  const wait = Math.max(0, lastDoubanCall + 1500 - Date.now());
+  if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+  lastDoubanCall = Date.now();
+
+  const searchUrl = `https://search.douban.com/${category}/subject_search?search_text=${encodeURIComponent(query)}`;
+  const resp = await fetchWithRetry(searchUrl, { headers: { 'User-Agent': DOUBAN_UA } }, 2, 10000);
+  if (!resp.ok) {
+    throw new Error(`豆瓣请求失败（HTTP ${resp.status}）`);
+  }
+
+  const html = await resp.text();
+  const match = html.match(/window\.__DATA__\s*=\s*(\{[\s\S]*?\})\s*;\s*window\.__USER__/);
+  if (!match) return [];
+
+  const data = JSON.parse(match[1]);
+  const items: any[] = Array.isArray(data.items) ? data.items : [];
+  return items
+    .filter((i) => i.cover_url && i.url && /\/subject\//.test(i.url))
+    .slice(0, 3)
+    .map((i) => {
+      const title = String(i.title);
+      const cover = String(i.cover_url).replace('/m/public/', '/l/public/');
+      const desc = i.rating?.value ? `豆瓣评分 ${i.rating.value}` : undefined;
+      const parts: string[] = String(i.abstract || '')
+        .split(' / ')
+        .map((s) => s.trim());
+
+      if (category === 'book') {
+        // abstract 形如 "刘慈欣 / 重庆出版社 / 2008-5 / 32.00"
+        return {
+          title,
+          author: parts[0] || undefined,
+          year: parseInt(parts[2] || '', 10) || undefined,
+          cover,
+          source: 'douban' as const,
+          sourceId: String(i.id),
+          sourceUrl: String(i.url),
+          desc,
+        };
+      }
+
+      // 影视类：年份在标题括号里（"攻壳机动队 攻殻機動隊 (1995)"），abstract 不含作者
+      const yearMatch = title.match(/\((\d{4})\)/);
+      return {
+        title: title.replace(/\s*\(\d{4}\)\s*$/, ''),
+        year: yearMatch ? parseInt(yearMatch[1], 10) : undefined,
+        cover,
+        source: 'douban' as const,
+        sourceId: String(i.id),
+        sourceUrl: String(i.url),
+        desc,
+      };
+    });
 }
 
 /** 最大请求体大小限制（50 MB，需支持大文件上传） */
