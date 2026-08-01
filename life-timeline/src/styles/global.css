@@ -26,6 +26,15 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* 隐藏横向滚动条的滚动容器（移动端导航） */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* 主题切换过渡 — 仅在手动切换时启用（.transitioning 类），避免页面导航闪烁 */
 html.transitioning,
 html.transitioning *,

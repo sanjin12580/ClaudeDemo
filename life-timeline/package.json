@@ -1,7 +1,7 @@
 {
   "name": "life-timeline",
   "type": "module",
-  "version": "0.0.1",
+  "version": "1.4.0",
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
@@ -26,6 +26,8 @@
   },
   "devDependencies": {
     "@types/d3": "^7.4.3",
-    "@types/node": "^26.1.2"
+    "@types/node": "^26.1.2",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7"
   }
 }

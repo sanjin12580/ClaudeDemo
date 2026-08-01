@@ -13,6 +13,13 @@ export interface Props {
 
 const { title, description, wide = false } = Astro.props;
 
+// SEO / 分享标签基础信息
+const siteUrl = (Astro.site?.toString() ?? 'https://sanjin12580.github.io').replace(/\/$/, '');
+const canonical = `${siteUrl}${Astro.url.pathname}`;
+const ogImage = `${siteUrl}${to('/images/events/wugongshan.png')}`;
+const rssUrl = `${siteUrl}${to('/rss.xml')}`;
+const pageDescription = description || t.site.description;
+
 // 当前路由路径（用于导航高亮）
 const currentPath = Astro.url.pathname.replace(/\/$/, '') || '/';
 
@@ -35,9 +42,23 @@ const navLinks = [
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content={description || t.site.description} />
+    <meta name="description" content={pageDescription} />
     <title>{title} — {t.site.title}</title>
     <link rel="icon" type="image/svg+xml" href={to('/favicon.svg')} />
+    <link rel="canonical" href={canonical} />
+    <link rel="alternate" type="application/rss+xml" title="RSS" href={rssUrl} />
+
+    <!-- Open Graph / 社交分享 -->
+    <meta property="og:site_name" content={t.site.title} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={pageDescription} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={pageDescription} />
+    <meta name="twitter:image" content={ogImage} />
 
     <!-- 防止暗色模式闪烁：在页面渲染前读取 localStorage / 系统偏好 -->
     <script is:inline>
@@ -56,16 +77,16 @@ const navLinks = [
   <body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col">
     <!-- 导航栏 — 毛玻璃效果 -->
     <header class="sticky top-0 z-50 backdrop-blur-lg bg-white dark:bg-gray-900/70 border-b border-gray-200/50 dark:border-gray-800/50">
-      <nav class="max-w-6xl mx-auto px-6 py-3 flex items-center gap-1">
+      <nav class="max-w-6xl mx-auto px-4 md:px-6 py-3 flex items-center gap-1">
         <!-- Logo / 首页 -->
         <a
           href={to('/')}
-          class="text-lg font-bold tracking-tight px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:bg-gray-950 transition-colors"
+          class="text-lg font-bold tracking-tight px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:bg-gray-950 transition-colors shrink-0"
         >
           🌱 {t.site.title}
         </a>
 
-        <div class="ml-2 flex items-center gap-0.5">
+        <div class="ml-2 flex items-center gap-0.5 overflow-x-auto flex-1 min-w-0 no-scrollbar">
           {navLinks.slice(1).map((link) => {
             const isActive = link.match(currentPath);
             return (
@@ -83,18 +104,18 @@ const navLinks = [
           })}
         </div>
 
-        <div class="flex-1" />
-
         {import.meta.env.DEV && (
           <a
             href={to('/admin')}
-            class="text-sm px-3 py-1.5 rounded-lg text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:bg-gray-950 transition-colors"
+            class="text-sm px-3 py-1.5 rounded-lg text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:bg-gray-950 transition-colors shrink-0"
           >
             {t.nav.admin}
           </a>
         )}
 
-        <ThemeToggle client:load />
+        <span class="shrink-0">
+          <ThemeToggle client:load />
+        </span>
       </nav>
     </header>
 
