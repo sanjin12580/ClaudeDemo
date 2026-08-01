@@ -1,0 +1,177 @@
+---
+// ============================================================
+// /dashboard — 人生总览仪表盘
+// 统计卡墙 + 图表 + 纪念日倒计时 + 年度回顾入口
+// ============================================================
+
+import Layout from '../layouts/Layout.astro';
+import DashboardCharts from '../components/DashboardCharts';
+import { loadLifeStats } from '../lib/stats';
+import { loadAnniversaries } from '../lib/anniversaries';
+import { t } from '../lib/i18n';
+import { to } from '../lib/base';
+
+const stats = await loadLifeStats();
+const anniversaries = (await loadAnniversaries()).slice(0, 5);
+
+const categoryData = stats.categoryCounts;
+const trendData = stats.yearly
+  .slice()
+  .sort((a, b) => a.year - b.year)
+  .map((y) => ({ year: y.year, count: y.eventCount }));
+const latestYears = stats.yearly.slice(0, 3);
+
+const yearSpanLabel =
+  stats.eventYearStart !== null && stats.eventYearEnd !== null
+    ? t.dashboard.yearSpan(stats.eventYearStart, stats.eventYearEnd)
+    : t.dashboard.noData;
+const oneOverELabel = stats.passedOneOverE
+  ? t.dashboard.oneOverEPassed
+  : t.dashboard.oneOverEBefore(Math.max(0, Math.round((stats.oneOverE - stats.ageYears) * 10) / 10));
+
+const cardCls =
+  'card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm';
+const statRow = 'flex items-center justify-between gap-2';
+const statDt = 'text-xs text-gray-500 dark:text-gray-400';
+const statDd = 'text-sm font-semibold tabular-nums';
+---
+
+<Layout title={t.dashboard.heading} description={t.dashboard.description}>
+  <div class="space-y-8">
+    <div>
+      <h1 class="text-3xl font-bold tracking-tight">{t.dashboard.heading}</h1>
+      <p class="mt-2 text-gray-500 dark:text-gray-400">{t.dashboard.description}</p>
+    </div>
+
+    <!-- 纪念日倒计时 -->
+    <section>
+      <h2 class="text-xl font-bold tracking-tight mb-1">{t.dashboard.anniversariesTitle}</h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{t.dashboard.anniversariesDescription}</p>
+      {
+        anniversaries.length === 0 ? (
+          <p class="text-sm text-gray-400 dark:text-gray-500">{t.dashboard.noAnniversaries}</p>
+        ) : (
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            {
+              anniversaries.map((a) => (
+                <div class={cardCls + ' text-center'}>
+                  <div class="text-2xl mb-1">{a.emoji}</div>
+                  <div class="text-sm font-semibold truncate" title={a.name}>{a.name}</div>
+                  <div class={`text-xs font-bold mt-1 ${a.daysLeft === 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-300'}`}>
+                    {a.daysLeft === 0 ? t.dashboard.today : t.dashboard.daysLeft(a.daysLeft)}
+                  </div>
+                  <div class="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{a.nextDate} · {t.dashboard.everyYear}</div>
+                </div>
+              ))
+            }
+          </div>
+        )
+      }
+    </section>
+
+    <!-- 统计卡墙 -->
+    <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <!-- 生命 -->
+      <div class={cardCls}>
+        <h3 class="text-sm font-semibold mb-3">{t.dashboard.life}</h3>
+        <dl class="space-y-2">
+          <div class={statRow}><dt class={statDt}>{t.dashboard.age}</dt><dd class={statDd}>{stats.ageYears} 岁</dd></div>
+          <div class={statRow}><dt class={statDt}>{t.dashboard.daysLived}</dt><dd class={statDd}>{stats.ageDays} 天</dd></div>
+          <div class={statRow}><dt class={statDt}>{t.dashboard.weeksLived}</dt><dd class={statDd}>{stats.ageWeeks} 周</dd></div>
+          <div class={statRow}><dt class={statDt}>{t.dashboard.oneOverE}</dt><dd class={statDd}>{stats.oneOverE} 岁</dd></div>
+          <div class="pt-1 text-[10px] text-gray-400 dark:text-gray-500 leading-snug">{oneOverELabel}</div>
+        </dl>
+      </div>
+
+      <!-- 事件 -->
+      <div class={cardCls}>
+        <h3 class="text-sm font-semibold mb-3">{t.dashboard.events}</h3>
+        <dl class="space-y-2">
+          <div class={statRow}><dt class={statDt}>{t.dashboard.eventCount}</dt><dd class={statDd}>{stats.eventCount}</dd></div>
+          <div class={statRow}><dt class={statDt}>{t.dashboard.importantEvents}</dt><dd class={statDd}>{stats.importantEventCount}</dd></div>
+          <div class={statRow}><dt class={statDt}>{t.dashboard.locations}</dt><dd class={statDd}>{stats.locationCount}</dd></div>
+          <div class={statRow}><dt class={statDt}>年份跨度</dt><dd class={statDd}>{yearSpanLabel}</dd></div>
+        </dl>
+      </div>
+
+      <!-- 旅行 -->
+      <div class={cardCls}>
+        <h3 class="text-sm font-semibold mb-3">{t.dashboard.travel}</h3>
+        <dl class="space-y-2">
+          <div class={statRow}><dt class={statDt}>{t.dashboard.provinces}</dt><dd class={statDd}>{stats.provinceCount}</dd></div>
+          <div class={statRow}><dt class={statDt}>{t.dashboard.cities}</dt><dd class={statDd}>{stats.cityCount}</dd></div>
+          {
+            stats.provinces.length > 0 && (
+              <div class="pt-1 flex flex-wrap gap-1">
+                {stats.provinces.slice(0, 6).map((p) => (
+                  <span class="badge badge-xs badge-ghost text-[10px]">{p}</span>
+                ))}
+                {stats.provinces.length > 6 && <span class="badge badge-xs badge-ghost text-[10px]">+{stats.provinces.length - 6}</span>}
+              </div>
+            )
+          }
+        </dl>
+      </div>
+
+      <!-- 内容 -->
+      <div class={cardCls}>
+        <h3 class="text-sm font-semibold mb-3">{t.dashboard.content}</h3>
+        <dl class="space-y-2">
+          <div class={statRow}><dt class={statDt}>{t.dashboard.posts}</dt><dd class={statDd}>{stats.postCount}</dd></div>
+          <div class={statRow}><dt class={statDt}>{t.dashboard.mediaFiles}</dt><dd class={statDd}>{stats.mediaCount}</dd></div>
+          <div class={statRow}><dt class={statDt}>{t.dashboard.readDone}</dt><dd class={statDd}>{stats.consumptionCounts.done}</dd></div>
+          <div class={statRow}><dt class={statDt}>{t.dashboard.readingDoing} / {t.dashboard.readingWant}</dt><dd class={statDd}>{stats.consumptionCounts.doing} / {stats.consumptionCounts.want}</dd></div>
+        </dl>
+      </div>
+
+      <!-- 目标 -->
+      <div class={cardCls}>
+        <h3 class="text-sm font-semibold mb-3">{t.dashboard.goals}</h3>
+        <dl class="space-y-2">
+          <div class={statRow}><dt class={statDt}>{t.dashboard.goalTotal(stats.goalCount)}</dt><dd class={statDd}>{stats.goalCompleted} ✓</dd></div>
+          <div class={statRow}><dt class={statDt}>{t.dashboard.goalRate}</dt><dd class={statDd}>{stats.goalDoneRate}%</dd></div>
+          <div class={statRow}><dt class={statDt}>{t.dashboard.avgProgress}</dt><dd class={statDd}>{stats.goalAvgProgress}%</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <!-- 图表 -->
+    <DashboardCharts categoryData={categoryData} trendData={trendData} client:load />
+
+    <!-- 年度回顾入口 -->
+    <section>
+      <div class="flex items-end justify-between mb-3">
+        <div>
+          <h2 class="text-xl font-bold tracking-tight">{t.dashboard.yearlyTitle}</h2>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{t.dashboard.yearlyDescription}</p>
+        </div>
+        <a href={to('/yearly')} class="text-sm text-green-600 dark:text-green-400 hover:underline shrink-0">
+          {t.dashboard.viewYearly}
+        </a>
+      </div>
+      {
+        latestYears.length === 0 ? (
+          <p class="text-sm text-gray-400 dark:text-gray-500">{t.yearly.empty}</p>
+        ) : (
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {
+              latestYears.map((y) => (
+                <a
+                  href={to(`/yearly/${y.year}`)}
+                  class="card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300"
+                >
+                  <div class="text-2xl font-bold tracking-tight">{y.year}</div>
+                  <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 space-y-1">
+                    <div>{y.eventCount} {t.yearly.events} · {y.importantCount} {t.yearly.important}</div>
+                    <div>{y.postCount} {t.yearly.posts} · {y.doneCount} {t.yearly.read}</div>
+                    <div>{y.cityCount} {t.yearly.cities}</div>
+                  </div>
+                </a>
+              ))
+            }
+          </div>
+        )
+      }
+    </section>
+  </div>
+</Layout>

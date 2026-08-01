@@ -1,0 +1,191 @@
+---
+// ============================================================
+// /yearly/[year] — 单年度回顾详情
+// ============================================================
+
+import Layout from '../../layouts/Layout.astro';
+import EventCard from '../../components/EventCard';
+import { loadLifeStats } from '../../lib/stats';
+import { loadEvents } from '../../lib/parseEvents';
+import { renderStars } from '../../lib/parseConsumptions';
+import { t } from '../../lib/i18n';
+import { to, coverUrl } from '../../lib/base';
+
+export async function getStaticPaths() {
+  const stats = await loadLifeStats();
+  return stats.yearly.map((y) => ({ params: { year: String(y.year) } }));
+}
+
+const { year } = Astro.params;
+const stats = await loadLifeStats();
+const summary = stats.yearly.find((y) => y.year === Number(year));
+if (!summary) {
+  throw new Error(`Year ${year} not found`);
+}
+
+const events = (await loadEvents()).filter((e) => e.date.startsWith(year));
+const goalStatusLabel = (status: string) =>
+  status === 'completed' ? t.goalBoard.completed : status === 'paused' ? t.goalBoard.paused : t.goalBoard.active;
+const goalCategoryLabel = (category: string) =>
+  category === 'long' ? t.admin.goalCategoryLong : t.admin.goalCategoryShort;
+---
+
+<Layout title={`${year} 年`} description={t.yearly.description}>
+  <div class="space-y-8">
+    <div>
+      <a
+        href={to('/yearly')}
+        class="text-sm text-gray-400 dark:text-gray-500 hover:text-gray-800 dark:text-gray-200 transition-colors"
+      >
+        {t.yearly.backToList}
+      </a>
+      <h1 class="text-3xl font-bold tracking-tight mt-2">{year} 年</h1>
+      <p class="mt-2 text-gray-500 dark:text-gray-400">
+        {summary.eventCount} {t.yearly.events} · {summary.postCount} {t.yearly.posts} · {summary.doneCount} {t.yearly.read}
+      </p>
+    </div>
+
+    <!-- 年度统计卡 -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div class="card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 text-center shadow-sm">
+        <div class="text-2xl font-bold text-green-600 dark:text-green-400">{summary.eventCount}</div>
+        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{t.yearly.eventsSection}</div>
+      </div>
+      <div class="card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 text-center shadow-sm">
+        <div class="text-2xl font-bold text-amber-500">{summary.importantCount}</div>
+        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{t.yearly.important}</div>
+      </div>
+      <div class="card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 text-center shadow-sm">
+        <div class="text-2xl font-bold text-blue-500">{summary.doneCount}</div>
+        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{t.yearly.read}</div>
+      </div>
+      <div class="card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 text-center shadow-sm">
+        <div class="text-2xl font-bold text-violet-500">{summary.cityCount}</div>
+        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{t.yearly.cities}</div>
+      </div>
+    </div>
+
+    <!-- 事件 -->
+    <section>
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-bold tracking-tight">{t.yearly.eventsSection}</h2>
+        <a href={to(`/timeline/${year}`)} class="text-sm text-green-600 dark:text-green-400 hover:underline">
+          {t.yearly.viewTimeline}
+        </a>
+      </div>
+      {
+        events.length === 0 ? (
+          <p class="text-sm text-gray-400 dark:text-gray-500">{t.timeline.noEvents}</p>
+        ) : (
+          <div class="space-y-3">
+            {events.map((event) => (
+              <EventCard event={event} client:load />
+            ))}
+          </div>
+        )
+      }
+    </section>
+
+    <!-- 博客 -->
+    <section>
+      <h2 class="text-xl font-bold tracking-tight mb-4">{t.yearly.postsSection}</h2>
+      {
+        summary.postCount === 0 ? (
+          <p class="text-sm text-gray-400 dark:text-gray-500">{t.yearly.noPosts}</p>
+        ) : (
+          <div class="space-y-2">
+            {summary.posts.map((post) => (
+              <a
+                href={to(`/blog/${post.slug}`)}
+                class="flex items-center justify-between card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-all"
+              >
+                <span class="text-sm font-medium">{post.title}</span>
+                <span class="text-xs text-gray-400 dark:text-gray-500 shrink-0 ml-3">{post.date}</span>
+              </a>
+            ))}
+          </div>
+        )
+      }
+    </section>
+
+    <!-- 读完清单 -->
+    <section>
+      <h2 class="text-xl font-bold tracking-tight mb-4">{t.yearly.readingSection}</h2>
+      {
+        summary.doneCount === 0 ? (
+          <p class="text-sm text-gray-400 dark:text-gray-500">{t.yearly.noReading}</p>
+        ) : (
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {
+              summary.consumptions.map((c) => (
+                <div class="flex items-center gap-3 card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-3 shadow-sm">
+                  {
+                    c.cover ? (
+                      <img src={coverUrl(c.cover)} alt={c.title} class="w-12 h-16 object-cover rounded shrink-0" loading="lazy" />
+                    ) : (
+                      <div class="w-12 h-16 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xl shrink-0">📚</div>
+                    )
+                  }
+                  <div class="min-w-0">
+                    <div class="text-sm font-medium truncate">{c.title}</div>
+                    <div class="text-xs text-amber-500 mt-0.5">{renderStars(c.rating)}</div>
+                    <div class="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{c.date}</div>
+                  </div>
+                </div>
+              ))
+            }
+          </div>
+        )
+      }
+    </section>
+
+    <!-- 旅行城市 -->
+    <section>
+      <h2 class="text-xl font-bold tracking-tight mb-4">{t.yearly.travelSection}</h2>
+      {
+        summary.cityCount === 0 ? (
+          <p class="text-sm text-gray-400 dark:text-gray-500">{t.yearly.noTravel}</p>
+        ) : (
+          <div class="flex flex-wrap gap-2">
+            {
+              summary.cities.map((city) => (
+                <span class="badge badge-lg badge-outline px-3 py-2 text-sm">
+                  📍 {city.name}{city.province ? ` · ${city.province}` : ''}
+                </span>
+              ))
+            }
+          </div>
+        )
+      }
+    </section>
+
+    <!-- 目标 -->
+    <section>
+      <h2 class="text-xl font-bold tracking-tight mb-4">{t.yearly.goalsSection}</h2>
+      {
+        summary.goalCount === 0 ? (
+          <p class="text-sm text-gray-400 dark:text-gray-500">{t.yearly.noGoals}</p>
+        ) : (
+          <div class="space-y-3">
+            {
+              summary.goals.map((goal) => (
+                <div class="card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 shadow-sm">
+                  <div class="flex items-center justify-between gap-3">
+                    <span class="text-sm font-medium truncate">{goal.title}</span>
+                    <span class="shrink-0 text-[10px] text-gray-400 dark:text-gray-500">
+                      {goalCategoryLabel(goal.category)} · {goalStatusLabel(goal.status)}
+                    </span>
+                  </div>
+                  <div class="mt-2 h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                    <div class="h-full rounded-full bg-green-500" style={`width: ${goal.progress}%`} />
+                  </div>
+                  <div class="mt-1 text-right text-[10px] text-gray-400 dark:text-gray-500">{goal.progress}%</div>
+                </div>
+              ))
+            }
+          </div>
+        )
+      }
+    </section>
+  </div>
+</Layout>

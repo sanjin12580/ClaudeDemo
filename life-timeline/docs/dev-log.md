@@ -48,6 +48,14 @@
 - [x] **生命计数器增强** `LifeCounter.tsx` — 人生进度条（渐变色 + 光泽），1/e 分割线标记（~29.4 岁），动画百分比标签
 - [x] **首页集成** — `index.astro` 加入 GoalBoard 组件
 
+### v1.0.0: 人生仪表盘（Phase 13）
+- [x] **数据总览仪表盘** `/dashboard` — 统计卡墙（生命/事件/旅行/内容/目标五组）+ ECharts 图表（分类分布环形图 + 年度事件趋势柱状图）
+- [x] **首页统计条** — 已活天数/事件数/旅行省份/博客/已读/目标完成率，服务端渲染无客户端 JS
+- [x] **年度回顾** `/yearly` — 年份索引 + 每年详情页（事件/博客/读完清单/旅行城市/目标），纯静态生成
+- [x] **纪念日倒计时** — 生日 + importance≥4 事件自动派生 + `anniversaries.json` 手工条目，按 MM-DD 去重
+- [x] **统计层** `src/lib/stats.ts` — 构建时聚合事件/博客/清单/目标/媒体/档案数据；`CITY_PROVINCE` 提取到 `regions.ts` 供地图与统计共用
+- [x] **dev** — 补装 `@types/node`，修复 astro check 既有 Node 类型错误与 travel/consumptions 页面 `className` 笔误
+
 ### v1.1.0: 读书观影清单重构（Phase 14）
 - [x] **状态分栏管理** — `/consumptions` 改为「想看 / 在看 / 看过」三栏视图 + 计数，每条为紧凑列表行
 - [x] **时间轴视图** — 只展示"看过"，按年份倒序分组，带日期与完整短评，像观影日记
@@ -86,6 +94,8 @@ life-timeline/
 │   │   ├── Timeline.tsx        # 时间线
 │   │   ├── EventCard.tsx       # 事件卡片
 │   │   ├── AdminPanel.tsx      # 管理面板
+│   │   ├── DashboardCharts.tsx # 总览图表
+│   │   ├── StatsStrip.astro    # 首页统计条
 │   │   └── ConsumptionList.tsx # 清单（分栏 + 时间轴）
 │   ├── layouts/
 │   │   └── Layout.astro        # 基础布局
@@ -93,9 +103,16 @@ life-timeline/
 │   │   ├── types.ts            # 类型定义
 │   │   ├── parseEvents.ts      # 事件解析
 │   │   ├── parseConsumptions.ts# 清单数据与类型
-│   │   └── i18n.ts             # 多语言工具
+│   │   ├── i18n.ts             # 多语言工具
+│   │   ├── stats.ts            # 人生统计聚合
+│   │   ├── anniversaries.ts    # 纪念日计算
+│   │   └── regions.ts          # 城市→省份映射
 │   ├── pages/
 │   │   ├── index.astro         # 首页：贡献图总览
+│   │   ├── dashboard.astro     # 人生总览仪表盘
+│   │   ├── yearly/
+│   │   │   ├── index.astro     # 年度回顾索引
+│   │   │   └── [year].astro    # 单年度详情
 │   │   ├── consumptions/
 │   │   │   ├── index.astro     # 读书观影清单
 │   │   │   └── [id].astro      # 单条详情
@@ -127,6 +144,7 @@ life-timeline/
 - [x] **搜索功能** — 首页和 Timeline 全局搜索，支持标题/分类/标签/正文匹配
 - [x] **图片上传** — 管理后台拖拽上传，自动插入 Markdown 图片语法到正文
 - [x] **文件上传** — 扩展至 30+ 文件格式，支持文档/PDF/视频/音频/文本等
+- [x] **人生仪表盘** — 数据总览 / 年度总结 / 纪念日倒计时
 
 ### 部署
 - [x] **GitHub Pages** — GitHub Actions 自动部署，推送 main 分支即构建
@@ -166,6 +184,16 @@ life-timeline/
 - **feat**: 数据模型新增 `year`/`author`/`source`/`sourceId`/`sourceUrl`，旧数据兼容
 - **fix**: 删除不再使用的 ConsumptionCard；travel 页面 `className` → `class`
 - **deps**: 补装 `@types/node`（本分支基于 main，尚未包含此前修复）
+
+### 2026-08-01 — v1.0.0 (Phase 13: 人生仪表盘)
+
+- **feat**: 数据总览仪表盘 `/dashboard` — 五组统计卡（生命/事件/旅行/内容/目标）+ ECharts 分类环形图 + 年度事件趋势柱状图 + 纪念日倒计时 + 年度回顾入口
+- **feat**: 首页统计条 `StatsStrip.astro` — 已活天数/事件数/旅行省份/博客/已读/目标完成率，每项链接对应页面，服务端渲染
+- **feat**: 年度回顾 `/yearly` — 年份索引卡片 + 每年详情页（事件/博客/读完清单/旅行城市/目标），`getStaticPaths` 仅生成有数据的年份
+- **feat**: 纪念日 `src/lib/anniversaries.ts` — 合并生日（档案 birthDate）+ importance≥4 事件（MM-DD 去重，手工优先）+ `src/data/anniversaries.json` 手工条目，构建时计算倒计时
+- **feat**: `src/lib/stats.ts` — 构建时聚合全站数据；`CITY_PROVINCE` 提取到 `src/lib/regions.ts`（TravelMap 与统计共用），新增 `provinceFromLocation()`
+- **deps**: 补装 `@types/node`（修复 astro check 既有 Node 类型报错）
+- **fix**: travel/consumptions 页面 `className` → `class`（Astro 模板笔误）
 
 ### 2026-07-31 — v0.9.0 (Phase 12: 旅行足迹地图 + 地图方案探索)
 

@@ -11,6 +11,7 @@ import { TooltipComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import chinaGeoJson from '../data/china.json';
 import type { GeoLocation } from '../lib/geocode';
+import { CITY_PROVINCE } from '../lib/regions';
 
 echarts.use([MapChart, ScatterChart, EffectScatterChart, TooltipComponent, CanvasRenderer]);
 
@@ -22,41 +23,6 @@ export interface TravelSpot {
 interface Props {
   spots: TravelSpot[];
 }
-
-/** 常用城市 → 省份映射 */
-const CITY_PROVINCE: Record<string, string> = {
-  深圳: '广东省', 广州: '广东省', 珠海: '广东省', 东莞: '广东省', 佛山: '广东省',
-  北京: '北京市', 上海: '上海市', 天津: '天津市', 重庆: '重庆市',
-  杭州: '浙江省', 宁波: '浙江省', 温州: '浙江省',
-  成都: '四川省', 绵阳: '四川省',
-  武汉: '湖北省', 宜昌: '湖北省',
-  南京: '江苏省', 苏州: '江苏省', 无锡: '江苏省', 常州: '江苏省',
-  西安: '陕西省',
-  长沙: '湖南省',
-  厦门: '福建省', 福州: '福建省', 泉州: '福建省',
-  青岛: '山东省', 济南: '山东省', 烟台: '山东省',
-  大连: '辽宁省', 沈阳: '辽宁省',
-  昆明: '云南省', 大理: '云南省', 丽江: '云南省',
-  贵阳: '贵州省',
-  南宁: '广西壮族自治区', 桂林: '广西壮族自治区',
-  海口: '海南省', 三亚: '海南省',
-  拉萨: '西藏自治区',
-  兰州: '甘肃省',
-  西宁: '青海省',
-  银川: '宁夏回族自治区',
-  呼和浩特: '内蒙古自治区', 包头: '内蒙古自治区',
-  哈尔滨: '黑龙江省',
-  长春: '吉林省',
-  郑州: '河南省', 洛阳: '河南省',
-  合肥: '安徽省',
-  南昌: '江西省',
-  太原: '山西省',
-  石家庄: '河北省',
-  台北: '台湾省',
-  香港: '香港特别行政区',
-  澳门: '澳门特别行政区',
-  乌鲁木齐: '新疆维吾尔自治区',
-};
 
 /**
  * 根据坐标找到对应省份
