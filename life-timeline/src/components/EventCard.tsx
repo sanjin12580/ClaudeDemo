@@ -28,6 +28,16 @@ export default function EventCard({ event }: Props) {
       href={to(`/events/${event.slug}`)}
       className={CARD_CLASSES}
     >
+      {/* 配图缩略图 */}
+      {event.images.length > 0 && (
+        <img
+          src={to(event.images[0])}
+          alt={event.title}
+          loading="lazy"
+          className="w-full h-40 object-cover rounded-lg mb-4"
+        />
+      )}
+
       {/* 头部：分类 + 日期 + 星级 */}
       <div className="flex items-center gap-3 mb-3 flex-wrap">
         <span className={`badge badge-sm font-medium ${catColor}`}>

@@ -1,0 +1,70 @@
+{
+  "items": [
+    {
+      "id": "b-001",
+      "title": "去武功山看云海日出",
+      "description": "海拔 1918 米的草甸，凌晨 4 点摸黑爬山，在山顶等一场日出。",
+      "category": "旅行",
+      "done": true,
+      "doneDate": "2025-05-20",
+      "tags": ["徒步", "日出", "自然"]
+    },
+    {
+      "id": "b-002",
+      "title": "独自去一个陌生城市旅行",
+      "description": "不查攻略，随机坐公交，和当地人聊天，迷路了就当探险。",
+      "category": "旅行",
+      "done": false,
+      "tags": ["自由行", "挑战"]
+    },
+    {
+      "id": "b-003",
+      "title": "考到潜水证",
+      "description": "去海边考 Open Water，看一次海底世界。",
+      "category": "体验",
+      "done": false,
+      "tags": ["潜水", "海洋"]
+    },
+    {
+      "id": "b-004",
+      "title": "跑一次全程马拉松",
+      "description": "42.195 公里，完赛即胜利，配速不重要。",
+      "category": "健康",
+      "done": false,
+      "tags": ["跑步", "毅力"]
+    },
+    {
+      "id": "b-005",
+      "title": "读完 100 本书",
+      "description": "保持阅读习惯，每年 20 本，慢慢攒。",
+      "category": "学习",
+      "done": false,
+      "tags": ["阅读"]
+    },
+    {
+      "id": "b-006",
+      "title": "拥有自己的开源项目",
+      "description": "做一个小而美的工具，收到陌生人的 Star 和感谢。",
+      "category": "成就",
+      "done": true,
+      "doneDate": "2026-07-01",
+      "tags": ["开源", "编程"]
+    },
+    {
+      "id": "b-007",
+      "title": "看一次极光",
+      "description": "在冰岛的冬天，躺着看天空跳舞。",
+      "category": "旅行",
+      "done": false,
+      "tags": ["极光", "北欧"]
+    },
+    {
+      "id": "b-008",
+      "title": "学会弹一首完整的曲子",
+      "description": "不用多专业，能完整弹完《晴天》就行。",
+      "category": "体验",
+      "done": false,
+      "tags": ["吉他", "音乐"]
+    }
+  ]
+}

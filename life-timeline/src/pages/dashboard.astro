@@ -131,6 +131,12 @@ const statDd = 'text-sm font-semibold tabular-nums';
           <div class={statRow}><dt class={statDt}>{t.dashboard.goalTotal(stats.goalCount)}</dt><dd class={statDd}>{stats.goalCompleted} ✓</dd></div>
           <div class={statRow}><dt class={statDt}>{t.dashboard.goalRate}</dt><dd class={statDd}>{stats.goalDoneRate}%</dd></div>
           <div class={statRow}><dt class={statDt}>{t.dashboard.avgProgress}</dt><dd class={statDd}>{stats.goalAvgProgress}%</dd></div>
+          <div class={statRow}>
+            <dt class={statDt}>
+              <a href={to('/bucket-list')} class="hover:underline">{t.dashboard.bucketList}</a>
+            </dt>
+            <dd class={statDd}>{stats.bucketListCounts.done} / {stats.bucketListCounts.total}</dd>
+          </div>
         </dl>
       </div>
     </section>

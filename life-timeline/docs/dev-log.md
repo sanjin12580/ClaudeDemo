@@ -1,6 +1,6 @@
 # 人生时间线 — 开发日志
 
-> 最后更新：2026-08-01 (v1.2.0)
+> 最后更新：2026-08-01 (v1.3.0)
 
 ---
 
@@ -69,6 +69,12 @@
 - [x] **筛选重构** — 状态分段筛选（全部/在看/看过）+ 类型 Tab（7 类型带计数）+ 搜索，三者组合过滤
 - [x] **移除「想看」** — 状态收敛为 在看/看过，全站清理（数据/统计/仪表盘/管理后台/详情页/i18n），现数据零迁移
 - [x] **示例数据补齐** — 新增 琅琊榜（电视剧）/ 乐队的夏天（综艺）/ 七里香（音乐），7 类型全覆盖，封面本地化
+
+### v1.3.0: 人生清单 + 事件配图 + 生命格子增强
+- [x] **人生清单** — `/bucket-list` 独立页面（完成进度条 + 已完成/待完成分组），JSON 数据维护，导航与仪表盘入口
+- [x] **事件配图** — 事件 schema 新增 `images` 字段，卡片缩略图 / 详情页照片条 / 时间线展示；3 张本地示例插画
+- [x] **生命格子增强** — 点击格子弹出该周事件（链接详情页），Esc/背景关闭，当前周高亮
+- [x] **清理外链图片** — 事件正文中 Unsplash 外链替换为本地图片
 
 ---
 
@@ -161,8 +167,7 @@ life-timeline/
 - [ ] 填充真实个人事件 — 保留示例作为模板，通过管理后台自行添加
 
 ### 后续子系统（远期）
-- [ ] 生活数据追踪（健康/财务/阅读/习惯）
-- [x] **读书观影清单** — 状态分栏 + 时间轴 + 详情页 + TMDB/豆瓣元数据自动拉取
+- [x] **读书观影清单** — 封面海报墙 + 状态/类型筛选 + 详情页 + TMDB/豆瓣元数据自动拉取
 - [x] 思想花园（博客/随笔/笔记）
 - [x] 个人档案页（基本资料 + 关系图谱）
 - [x] 多媒体档案 — 画廊页面 + kkFileView 文件预览集成
@@ -171,6 +176,15 @@ life-timeline/
 ---
 
 ## 变更记录
+
+### 2026-08-01 — v1.3.0 (人生清单 + 事件配图 + 生命格子增强)
+
+- **feat**: 人生清单 `/bucket-list` — 8 条示例（2 完成），分类徽标 + 进度条 + 已完成/待完成分组；导航「🎯 愿望清单」与仪表盘「目标」组联动（2/8）
+- **feat**: 事件配图 — `content/config.ts` 新增 `images` 字段；EventCard 缩略图、详情页照片条（首图大图 + 余图网格）、时间线复用卡片；旧事件无图不受影响
+- **feat**: LifeGrid 点击弹窗 — 显示该周事件列表并可跳详情，Esc/背景关闭，当前周蓝色高亮，键盘可达
+- **feat**: 3 张本地示例插画 `public/images/events/`（武功山/毕业/入职），替换事件正文中的 Unsplash 外链
+- **data**: 新增 `src/data/bucketlist.json` + `src/lib/parseBucketList.ts`；stats 聚合 `bucketListCounts`
+- **refactor**: 首页目标看板改为「🎯 当前目标」只展示进行中的目标（与人生清单错位：进度 vs 里程碑）；首页新增人生清单入口卡片（2/8）
 
 ### 2026-08-01 — v1.2.0 (Phase 14 优化：清单海报墙)
 
@@ -408,3 +422,37 @@ life-timeline/
 - 现象：vite 插件 `configResolved` 里 `config.base` 是 `"/"`，拿不到 `/ClaudeDemo`
 - 原因：Astro 的 `base` 由 Astro 自己处理，不透传给内层 Vite 配置
 - 解决：封面等资源存**无 base 路径**（如 `/covers/xxx.jpg`），渲染时用 `coverUrl()`（内部调 `to()`）补全 `/ClaudeDemo` 前缀，本地与线上 GitHub Pages 表现一致
+
+### 2026-08-01 — 清单海报墙改版（v1.2.0）
+
+**1. UI 改版先出方案再动手**
+
+- 现象：清单模块界面连续两轮改版都被否（状态分栏、时间轴），返工成本高
+- 解决：此后 UI 大改先给 2~3 套方案（参考 GitHub 优秀项目：Slate / CineLog / Plotwist / NeoDB / 片刻），用户选定方向（封面海报墙）后再实施
+- 教训：视觉偏好无法从代码推断，方案先行 + 让用户选择，比直接改更高效
+
+**2. 移除状态枚举要全站清理**
+
+- 现象：`status` 类型去掉 `want` 后，只改 `parseConsumptions.ts` 会引发多处类型/文案残留
+- 解决：同步清理 i18n 键（`consumptionsPage.want` / `consumptionStatusOptions.want` / dashboard `readingWant`）、`stats.ts` 的 `consumptionCounts`、`dashboard.astro` 内容行、`AdminPanel.tsx` 表单 state、详情页状态标签
+- 验证：`rg -n "想看|\bwant\b" src/` 确认无残留后 `npm run build`（astro check 严格模式兜底）
+
+**3. 视觉 QA 用 Chrome 无头截图（playwright-cli 兜底方案）**
+
+- 现象：`playwright-cli` 依赖 npx 临时拉包，网络不稳定时（registry DNS 解析失败）无法使用
+- 解决：本机 Chrome 直接无头截图：`"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --screenshot=out.png "http://localhost:4322/ClaudeDemo/consumptions"`；先 `npm run preview` 起预览服务
+- 补充：`--dump-dom` 可导出渲染后 DOM，用于核对网格结构、图片 `src`、无残留文案
+
+### 2026-08-01 — 事件配图与示例图（v1.3.0）
+
+**1. 事件正文里的外链图片同样会挂**
+
+- 现象：事件 Markdown 正文中直接引用 `images.unsplash.com` 外链（武功山/入职），线上与国内访问不稳定
+- 解决：沿用封面本地化教训，事件正文外链图替换为本地 `/images/events/*.png`，并新增 frontmatter `images` 字段统一管理配图
+- 验证：`npm run build` + 预览服务器图片全部 HTTP 200
+
+**2. 图像生成能力缺失时的占位方案**
+
+- 现象：本会话无内置 image_gen 工具、未配置 `OPENAI_API_KEY`，AI 出图不可用
+- 解决：先用纯 Python（zlib+struct 直接写 PNG）生成本地插画式占位图（渐变天空 + 剪影场景），后续可随时替换为真实照片或 AI 图
+- 教训：示例图优先本地化；占位图与真实图通过同一 `images` 字段切换，零迁移

@@ -65,7 +65,10 @@ function GoalCard({ goal, index }: { goal: Goal; index: number }) {
 
 export default function GoalBoard({ data }: Props) {
   const t = useI18n().goalBoard;
-  const totalGoals = data.short.length + data.long.length;
+  // 首页只展示「进行中」的目标，暂停/已完成的折叠不占版面
+  const activeShort = data.short.filter((g) => g.status === 'active');
+  const activeLong = data.long.filter((g) => g.status === 'active');
+  const totalGoals = activeShort.length + activeLong.length;
 
   if (totalGoals === 0) {
     return (
@@ -90,13 +93,13 @@ export default function GoalBoard({ data }: Props) {
         </h3>
 
         {/* 短期目标 */}
-        {data.short.length > 0 && (
+        {activeShort.length > 0 && (
           <div>
             <h4 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">
               {t.shortTitle}
             </h4>
             <div className="space-y-1">
-              {data.short.map((goal, i) => (
+              {activeShort.map((goal, i) => (
                 <GoalCard key={goal.id} goal={goal} index={i} />
               ))}
             </div>
@@ -104,13 +107,13 @@ export default function GoalBoard({ data }: Props) {
         )}
 
         {/* 长期目标 */}
-        {data.long.length > 0 && (
+        {activeLong.length > 0 && (
           <div>
             <h4 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">
               {t.longTitle}
             </h4>
             <div className="space-y-1">
-              {data.long.map((goal, i) => (
+              {activeLong.map((goal, i) => (
                 <GoalCard key={goal.id} goal={goal} index={i} />
               ))}
             </div>

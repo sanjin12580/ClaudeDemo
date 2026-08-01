@@ -7,6 +7,7 @@ import { loadEvents } from './parseEvents';
 import { loadPosts } from './parsePosts';
 import { loadConsumptions } from './parseConsumptions';
 import { loadGoals } from './parseGoals';
+import { loadBucketList } from './parseBucketList';
 import { loadMedia } from './parseMedia';
 import { loadProfile } from './parseProfile';
 import { provinceFromLocation } from './regions';
@@ -91,6 +92,7 @@ export interface LifeStats {
   postCount: number;
   mediaCount: number;
   consumptionCounts: { done: number; doing: number };
+  bucketListCounts: { done: number; total: number };
   // 目标
   goalCount: number;
   goalCompleted: number;
@@ -120,16 +122,21 @@ function topTagsFrom(tagMap: Map<string, number>, limit = 5): TagCount[] {
  * 聚合全站数据，返回总览指标与按年摘要
  */
 export async function loadLifeStats(): Promise<LifeStats> {
-  const [events, posts, consumptionData, goalData, media, profile] = await Promise.all([
+  const [events, posts, consumptionData, goalData, bucketData, media, profile] = await Promise.all([
     loadEvents(),
     loadPosts(),
     loadConsumptions(),
     loadGoals(),
+    loadBucketList(),
     loadMedia(),
     loadProfile(),
   ]);
   const consumptions = consumptionData.items;
   const goals = [...goalData.short, ...goalData.long];
+  const bucketListCounts = {
+    done: bucketData.items.filter((b) => b.done).length,
+    total: bucketData.items.length,
+  };
 
   // ---------- 生命 ----------
   const birthDate = profile?.birthDate ?? siteConfig.birthDate;
@@ -300,6 +307,7 @@ export async function loadLifeStats(): Promise<LifeStats> {
     postCount: posts.length,
     mediaCount: media.length,
     consumptionCounts,
+    bucketListCounts,
     goalCount: goals.length,
     goalCompleted,
     goalDoneRate,
