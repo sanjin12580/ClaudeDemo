@@ -6,7 +6,7 @@ export interface ConsumptionItem {
   id: string;
   title: string;
   type: 'book' | 'novel' | 'movie' | 'tv' | 'anime' | 'variety' | 'music';
-  status: 'done' | 'doing' | 'want';
+  status: 'done' | 'doing';
   rating: number; // 1-5
   review: string;
   date: string; // YYYY-MM or YYYY-MM-DD
@@ -54,7 +54,6 @@ export const CONSUMPTION_TYPES = [
 export const CONSUMPTION_STATUSES = [
   { key: 'done', label: '✅ 已看', color: 'badge-success' },
   { key: 'doing', label: '📖 在看', color: 'badge-info' },
-  { key: 'want', label: '⭐ 想看', color: 'badge-warning' },
 ] as const;
 
 /** 渲染星级 */

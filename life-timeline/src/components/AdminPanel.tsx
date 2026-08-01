@@ -121,7 +121,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
   const [consumptionId, setConsumptionId] = useState<string | null>(null);
   const [consumptionTitle, setConsumptionTitle] = useState('');
   const [consumptionType, setConsumptionType] = useState<'book' | 'novel' | 'movie' | 'tv' | 'anime' | 'variety' | 'music'>('book');
-  const [consumptionStatus, setConsumptionStatus] = useState<'done' | 'doing' | 'want'>('done');
+  const [consumptionStatus, setConsumptionStatus] = useState<'done' | 'doing'>('done');
   const [consumptionRating, setConsumptionRating] = useState(3);
   const [consumptionReview, setConsumptionReview] = useState('');
   const [consumptionDate, setConsumptionDate] = useState(new Date().toISOString().slice(0, 7));
