@@ -1,7 +1,8 @@
-import type { Plugin } from 'vite';
+import { loadEnv, type Plugin } from 'vite';
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
+import type { MetadataCandidate } from './src/lib/parseConsumptions';
 
 /** kkFileView 服务地址 */
 const KKFILEVIEW_HOST = 'localhost';
@@ -123,6 +124,7 @@ function uploadToKkFileView(filename: string, buffer: Buffer): Promise<string> {
 export function adminApiPlugin(): Plugin {
   return {
     name: 'admin-api',
+
     configureServer(server) {
       // === 上传文件（代理到 kkFileView） ===
       server.middlewares.use('/api/upload-file', (req, res) => {
@@ -700,8 +702,141 @@ longGoal: "${escapeYaml(longGoal || '')}"
         });
       });
 
+      // === 元数据自动获取（TMDB 影视 + 豆瓣书籍） ===
+      server.middlewares.use('/api/fetch-metadata', async (req, res) => {
+        res.setHeader('Content-Type', 'application/json');
+
+        const url = new URL(req.url ?? '/', 'http://localhost');
+        const type = url.searchParams.get('type') ?? '';
+        const title = (url.searchParams.get('title') ?? '').trim();
+
+        if (!title) {
+          res.statusCode = 400;
+          res.end(JSON.stringify({ success: false, error: '缺少 title 参数' }));
+          return;
+        }
+
+        try {
+          let candidates: MetadataCandidate[] = [];
+          let hint = '';
+
+          if (type === 'movie' || type === 'tv' || type === 'anime') {
+            candidates = await tmdbSearch(type, title);
+            if (candidates.length === 0) hint = 'TMDB 没有找到匹配结果，可手动填写';
+          } else if (type === 'book' || type === 'novel') {
+            candidates = await doubanBookSearch(title);
+            if (candidates.length === 0) hint = '豆瓣没有找到匹配结果，可手动填写';
+          } else {
+            hint = '综艺/音乐暂不支持自动获取，请手动填写';
+          }
+
+          res.end(JSON.stringify({ success: true, candidates, hint }));
+        } catch (err) {
+          res.statusCode = 502;
+          res.end(JSON.stringify({
+            success: false,
+            error: err instanceof Error ? err.message : String(err),
+          }));
+        }
+      });
+
     },
   };
+}
+
+// ============================================================
+// 元数据获取 — TMDB（影视/动漫） + 豆瓣（书籍/小说）
+// TMDB API Key 从环境变量读取（life-timeline/.env.local，已被 gitignore）
+// ============================================================
+
+const TMDB_API_URL = 'https://api.themoviedb.org/3';
+const TMDB_IMAGE_URL = 'https://image.tmdb.org/t/p/w500';
+const DOUBAN_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+
+/** 带超时的 fetch */
+function fetchWithTimeout(url: string, timeoutMs = 12000, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
+/** TMDB 搜索（movie 用电影接口，tv/anime 用剧集接口），返回前 3 个候选 */
+async function tmdbSearch(type: string, query: string): Promise<MetadataCandidate[]> {
+  const apiKey =
+    process.env.TMDB_API_KEY ||
+    loadEnv('development', process.cwd(), '').TMDB_API_KEY ||
+    '';
+  if (!apiKey) {
+    throw new Error('未配置 TMDB_API_KEY（请在 life-timeline/.env.local 中设置）');
+  }
+
+  const kind = type === 'movie' ? 'movie' : 'tv';
+  const searchUrl =
+    `${TMDB_API_URL}/search/${kind}` +
+    `?api_key=${encodeURIComponent(apiKey)}` +
+    `&query=${encodeURIComponent(query)}&language=zh-CN&page=1`;
+
+  const resp = await fetchWithTimeout(searchUrl);
+  if (!resp.ok) {
+    throw new Error(`TMDB 请求失败（HTTP ${resp.status}），请检查 API Key 与网络`);
+  }
+
+  const data = await resp.json();
+  const results: any[] = Array.isArray(data.results) ? data.results.slice(0, 3) : [];
+  return results
+    .map((r) => ({
+      title: r.title || r.name || r.original_title || r.original_name || '',
+      year: parseInt((r.release_date || r.first_air_date || '').slice(0, 4), 10) || undefined,
+      cover: r.poster_path ? `${TMDB_IMAGE_URL}${r.poster_path}` : '',
+      source: 'tmdb' as const,
+      sourceId: String(r.id),
+      sourceUrl: `https://www.themoviedb.org/${kind}/${r.id}`,
+      desc: (r.overview || '').slice(0, 120),
+    }))
+    .filter((c) => c.title);
+}
+
+let lastDoubanCall = 0;
+
+/** 豆瓣书籍搜索（带浏览器 UA，解析页面内嵌的 __DATA__ JSON），返回前 3 个候选 */
+async function doubanBookSearch(query: string): Promise<MetadataCandidate[]> {
+  // 豆瓣限速：每次请求间隔至少 1.5s
+  const wait = Math.max(0, lastDoubanCall + 1500 - Date.now());
+  if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+  lastDoubanCall = Date.now();
+
+  const searchUrl = `https://search.douban.com/book/subject_search?search_text=${encodeURIComponent(query)}`;
+  const resp = await fetchWithTimeout(searchUrl, 15000, { headers: { 'User-Agent': DOUBAN_UA } });
+  if (!resp.ok) {
+    throw new Error(`豆瓣请求失败（HTTP ${resp.status}）`);
+  }
+
+  const html = await resp.text();
+  const match = html.match(/window\.__DATA__\s*=\s*(\{[\s\S]*?\})\s*;\s*window\.__USER__/);
+  if (!match) return [];
+
+  const data = JSON.parse(match[1]);
+  const items: any[] = Array.isArray(data.items) ? data.items : [];
+  return items
+    .filter((i) => i.cover_url && i.url && /\/subject\//.test(i.url))
+    .slice(0, 3)
+    .map((i) => {
+      const parts: string[] = String(i.abstract || '')
+        .split(' / ')
+        .map((s) => s.trim());
+      const year = parseInt(parts[2] || '', 10) || undefined;
+      return {
+        title: String(i.title),
+        author: parts[0] || undefined,
+        year,
+        cover: String(i.cover_url).replace('/m/public/', '/l/public/'),
+        source: 'douban' as const,
+        sourceId: String(i.id),
+        sourceUrl: String(i.url),
+        desc: i.rating?.value ? `豆瓣评分 ${i.rating.value}` : undefined,
+      };
+    });
 }
 
 /** 最大请求体大小限制（50 MB，需支持大文件上传） */

@@ -1,6 +1,6 @@
 # 人生时间线 — 开发日志
 
-> 最后更新：2026-07-31 (v0.9.0)
+> 最后更新：2026-08-01 (v1.1.0)
 
 ---
 
@@ -48,6 +48,14 @@
 - [x] **生命计数器增强** `LifeCounter.tsx` — 人生进度条（渐变色 + 光泽），1/e 分割线标记（~29.4 岁），动画百分比标签
 - [x] **首页集成** — `index.astro` 加入 GoalBoard 组件
 
+### v1.1.0: 读书观影清单重构（Phase 14）
+- [x] **状态分栏管理** — `/consumptions` 改为「想看 / 在看 / 看过」三栏视图 + 计数，每条为紧凑列表行
+- [x] **时间轴视图** — 只展示"看过"，按年份倒序分组，带日期与完整短评，像观影日记
+- [x] **详情页** `/consumptions/[id]` — 封面 + 元数据 + 完整 Markdown 感受 + 豆瓣/TMDB 来源链接
+- [x] **元数据自动获取** — 管理后台「清单」Tab 启用；影视/动漫走 TMDB（`TMDB_API_KEY` 存 `.env.local`），书籍/小说走豆瓣搜索页解析；候选选择后自动填充
+- [x] **数据模型升级** — 新增 `year` / `author` / `source` / `sourceId` / `sourceUrl` 字段，向后兼容
+- [x] **导航入口** — 导航新增「📚 清单」，页面文案全部走 i18n
+
 ---
 
 ## 技术栈
@@ -77,15 +85,20 @@ life-timeline/
 │   │   ├── LifeGrid.tsx        # 贡献图
 │   │   ├── Timeline.tsx        # 时间线
 │   │   ├── EventCard.tsx       # 事件卡片
-│   │   └── AdminPanel.tsx      # 管理面板
+│   │   ├── AdminPanel.tsx      # 管理面板
+│   │   └── ConsumptionList.tsx # 清单（分栏 + 时间轴）
 │   ├── layouts/
 │   │   └── Layout.astro        # 基础布局
 │   ├── lib/
 │   │   ├── types.ts            # 类型定义
 │   │   ├── parseEvents.ts      # 事件解析
+│   │   ├── parseConsumptions.ts# 清单数据与类型
 │   │   └── i18n.ts             # 多语言工具
 │   ├── pages/
 │   │   ├── index.astro         # 首页：贡献图总览
+│   │   ├── consumptions/
+│   │   │   ├── index.astro     # 读书观影清单
+│   │   │   └── [id].astro      # 单条详情
 │   │   ├── timeline/
 │   │   │   ├── index.astro     # 完整时间线
 │   │   │   └── [year].astro    # 年份详情
@@ -125,7 +138,7 @@ life-timeline/
 
 ### 后续子系统（远期）
 - [ ] 生活数据追踪（健康/财务/阅读/习惯）
-- [ ] **读书观影清单** — 已建数据模型和组件框架，需重新设计交互流程（豆瓣封面自动拉取等）
+- [x] **读书观影清单** — 状态分栏 + 时间轴 + 详情页 + TMDB/豆瓣元数据自动拉取
 - [x] 思想花园（博客/随笔/笔记）
 - [x] 个人档案页（基本资料 + 关系图谱）
 - [x] 多媒体档案 — 画廊页面 + kkFileView 文件预览集成
@@ -134,6 +147,16 @@ life-timeline/
 ---
 
 ## 变更记录
+
+### 2026-08-01 — v1.1.0 (Phase 14: 读书观影清单重构)
+
+- **feat**: `/consumptions` 重构 — 「状态管理」三栏（想看/在看/看过）+ 「时间轴」（按看完日期分组）+ 标题/作者/标签搜索
+- **feat**: 详情页 `/consumptions/[id]` — 服务端渲染完整 Markdown 感受，含年份/作者/来源链接
+- **feat**: 管理后台「📚 清单」Tab 启用 — 新增 年份/作者 字段与「🪄 自动获取元数据」（候选选择后自动填充封面与元数据）
+- **feat**: `/api/fetch-metadata` — 影视/动漫走 TMDB（key 存 `.env.local`），书籍/小说走豆瓣搜索页内嵌 JSON 解析；综艺/音乐提示手动填写
+- **feat**: 数据模型新增 `year`/`author`/`source`/`sourceId`/`sourceUrl`，旧数据兼容
+- **fix**: 删除不再使用的 ConsumptionCard；travel 页面 `className` → `class`
+- **deps**: 补装 `@types/node`（本分支基于 main，尚未包含此前修复）
 
 ### 2026-07-31 — v0.9.0 (Phase 12: 旅行足迹地图 + 地图方案探索)
 

@@ -12,10 +12,32 @@ export interface ConsumptionItem {
   date: string; // YYYY-MM or YYYY-MM-DD
   cover: string;
   tags: string[];
+  /** 发行/出版年份 */
+  year?: number;
+  /** 作者 / 导演 */
+  author?: string;
+  /** 来源 ID（TMDB id 或豆瓣 subject id） */
+  sourceId?: string;
+  /** 元数据来源 */
+  source?: 'tmdb' | 'douban' | 'manual';
+  /** 来源详情链接 */
+  sourceUrl?: string;
 }
 
 export interface ConsumptionData {
   items: ConsumptionItem[];
+}
+
+/** 元数据自动获取的候选结果 */
+export interface MetadataCandidate {
+  title: string;
+  year?: number;
+  author?: string;
+  cover: string;
+  source: 'tmdb' | 'douban' | 'manual';
+  sourceId: string;
+  sourceUrl?: string;
+  desc?: string;
 }
 
 /** 媒介类型配置 */

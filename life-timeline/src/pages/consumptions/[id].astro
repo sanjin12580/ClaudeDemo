@@ -1,0 +1,145 @@
+---
+// ============================================================
+// /consumptions/[id] — 单条书影音详情
+// 服务端渲染完整 Markdown 感受 + 元数据 + 来源链接
+// ============================================================
+
+import Layout from '../../layouts/Layout.astro';
+import { loadConsumptions, renderStars } from '../../lib/parseConsumptions';
+import { createMarkdownProcessor } from '@astrojs/markdown-remark';
+import { t } from '../../lib/i18n';
+import { to, formatDate } from '../../lib/base';
+
+export async function getStaticPaths() {
+  const data = await loadConsumptions();
+  return data.items.map((item) => ({ params: { id: item.id } }));
+}
+
+const { id } = Astro.params;
+const data = await loadConsumptions();
+const item = data.items.find((i) => i.id === id);
+
+if (!item) {
+  return new Response(null, { status: 404, statusText: 'Not Found' });
+}
+
+const processor = await createMarkdownProcessor();
+const { code: reviewHtml } = await processor.render(item.review || '');
+
+const typeLabel = t.admin.consumptionTypeOptions[item.type] ?? item.type;
+const statusLabel =
+  item.status === 'done'
+    ? t.consumptionsPage.done
+    : item.status === 'doing'
+      ? t.consumptionsPage.doing
+      : t.consumptionsPage.want;
+const sourceLabel =
+  item.source === 'tmdb'
+    ? t.consumptionDetail.tmdb
+    : item.source === 'douban'
+      ? t.consumptionDetail.douban
+      : null;
+---
+
+<Layout title={item.title} description={item.review ? item.review.replace(/[#>*-]/g, '').trim().slice(0, 120) : item.title}>
+  <div class="max-w-3xl space-y-6">
+    <a
+      href={to('/consumptions')}
+      class="text-sm text-gray-400 dark:text-gray-500 hover:text-gray-800 dark:text-gray-200 transition-colors"
+    >
+      {t.consumptionDetail.back}
+    </a>
+
+    <div class="flex flex-col sm:flex-row gap-6">
+      {/* 封面 */}
+      <div class="shrink-0">
+        {
+          item.cover ? (
+            <img
+              src={item.cover}
+              alt={item.title}
+              class="w-48 h-64 object-cover rounded-xl shadow-md bg-gray-100 dark:bg-gray-800"
+            />
+          ) : (
+            <div class="w-48 h-64 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-5xl">
+              📦
+            </div>
+          )
+        }
+      </div>
+
+      {/* 元数据 */}
+      <div class="min-w-0 flex-1">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="badge badge-sm badge-ghost">{typeLabel}</span>
+          <span class="badge badge-sm badge-success">{statusLabel}</span>
+        </div>
+        <h1 class="text-2xl font-bold tracking-tight mt-2">{item.title}</h1>
+        <div class="text-sm text-amber-500 mt-1">{renderStars(item.rating)}</div>
+
+        <dl class="mt-4 text-sm space-y-1.5">
+          {
+            item.author && (
+              <div class="flex gap-2">
+                <dt class="text-gray-400 dark:text-gray-500 shrink-0 w-20">{t.consumptionDetail.author}</dt>
+                <dd>{item.author}</dd>
+              </div>
+            )
+          }
+          {
+            item.year && (
+              <div class="flex gap-2">
+                <dt class="text-gray-400 dark:text-gray-500 shrink-0 w-20">{t.consumptionDetail.year}</dt>
+                <dd>{item.year}</dd>
+              </div>
+            )
+          }
+          <div class="flex gap-2">
+            <dt class="text-gray-400 dark:text-gray-500 shrink-0 w-20">{t.consumptionDetail.date}</dt>
+            <dd>{formatDate(item.date)}</dd>
+          </div>
+          {
+            item.tags.length > 0 && (
+              <div class="flex gap-2">
+                <dt class="text-gray-400 dark:text-gray-500 shrink-0 w-20">{t.consumptionDetail.tags}</dt>
+                <dd class="flex flex-wrap gap-1">
+                  {item.tags.map((tag) => (
+                    <span class="badge badge-xs badge-ghost">{tag}</span>
+                  ))}
+                </dd>
+              </div>
+            )
+          }
+          {
+            item.sourceUrl && (
+              <div class="flex gap-2">
+                <dt class="text-gray-400 dark:text-gray-500 shrink-0 w-20">{t.consumptionDetail.source}</dt>
+                <dd>
+                  <a
+                    href={item.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-green-600 dark:text-green-400 hover:underline"
+                  >
+                    {sourceLabel ?? item.sourceUrl}
+                    {item.sourceId ? ` · ${item.sourceId}` : ''} ↗
+                  </a>
+                </dd>
+              </div>
+            )
+          }
+        </dl>
+      </div>
+    </div>
+
+    {/* 完整感受 */}
+    {
+      item.review && (
+        <section class="card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 shadow-sm">
+          <h2 class="text-sm font-semibold mb-4">{t.consumptionDetail.review}</h2>
+          <div class="prose prose-sm prose-green dark:prose-invert max-w-none" set:html={reviewHtml} />
+        </section>
+      )
+    }
+  </div>
+</Layout>

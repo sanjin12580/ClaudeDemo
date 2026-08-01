@@ -9,6 +9,11 @@
       "review": "中国科幻的巅峰之作。黑暗森林法则令人深思，程心的选择让人愤怒又无奈。最喜欢第二部《黑暗森林》，罗辑这个角色塑造得太好了。\n\n> 给岁月以文明，而不是给文明以岁月。",
       "date": "2023-06",
       "cover": "https://img1.doubanio.com/view/subject/l/public/s2768378.jpg",
+      "year": 2008,
+      "author": "刘慈欣",
+      "source": "douban",
+      "sourceId": "2567698",
+      "sourceUrl": "https://book.douban.com/subject/2567698/",
       "tags": [
         "科幻",
         "刘慈欣",
@@ -23,6 +28,8 @@
       "rating": 5,
       "review": "赛博朋克的里程碑。押井守的电影版和神山健治的 TV 版各有千秋，探讨了意识、灵魂与人性的边界。",
       "date": "2024-01",
+      "year": 1995,
+      "author": "押井守",
       "cover": "http://127.0.0.1:8012/onlinePreview?url=aHR0cDovLzEyNy4wLjAuMTo4MDEyL2RlbW8vMTc4NTQ2NDc1MDgzMS1Gcm9udC5qcGc%3D",
       "tags": [
         "科幻",
@@ -39,6 +46,11 @@
       "review": "诺兰的宇宙诗篇。汉斯·季默的配乐让人起鸡皮疙瘩，\"不要温和地走进那个良夜\"。五维空间的视觉呈现令人惊叹。",
       "date": "2022-09",
       "cover": "",
+      "year": 2014,
+      "author": "克里斯托弗·诺兰",
+      "source": "tmdb",
+      "sourceId": "157336",
+      "sourceUrl": "https://www.themoviedb.org/movie/157336",
       "tags": [
         "科幻",
         "诺兰",
@@ -54,6 +66,8 @@
       "review": "温柔又感伤。精灵的时间感和人类的短暂生命形成鲜明对比。\"后来，勇者死了\"这句话每次看到都想哭。",
       "date": "2024-05",
       "cover": "",
+      "year": 2023,
+      "author": "山田钟人",
       "tags": [
         "奇幻",
         "治愈",
@@ -69,6 +83,8 @@
       "review": "Paul Graham 的文集，程序员必读。关于创业、编程语言设计和硅谷文化的思考很有启发，虽然有些观点已经过时。",
       "date": "2024-03",
       "cover": "",
+      "year": 2004,
+      "author": "Paul Graham",
       "tags": [
         "编程",
         "创业",
@@ -84,6 +100,8 @@
       "review": "史诗级的作品。从单纯的战斗番到对战争、自由、民族主义的深刻反思。最终季的结局虽有争议，但整体不可否认是一部神作。",
       "date": "2023-12",
       "cover": "",
+      "year": 2013,
+      "author": "谏山创",
       "tags": [
         "奇幻",
         "战斗",
