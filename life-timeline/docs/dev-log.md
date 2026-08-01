@@ -1,6 +1,6 @@
 # 人生时间线 — 开发日志
 
-> 最后更新：2026-08-01 (v1.3.0)
+> 最后更新：2026-08-02 (v1.4.0)
 
 ---
 
@@ -75,6 +75,13 @@
 - [x] **事件配图** — 事件 schema 新增 `images` 字段，卡片缩略图 / 详情页照片条 / 时间线展示；3 张本地示例插画
 - [x] **生命格子增强** — 点击格子弹出该周事件（链接详情页），Esc/背景关闭，当前周高亮
 - [x] **清理外链图片** — 事件正文中 Unsplash 外链替换为本地图片
+
+### v1.4.0: 管理后台重构 + 全站体检修复
+- [x] **管理后台三栏重构（方案 A）** — 左侧图标导航（带数量角标）+ 内容列表 + 编辑工作区；修复「新建」无法打开空白表单的 bug
+- [x] **媒体本地化** — 上传改存 `public/uploads/`（随站发布），不再依赖本地 kkFileView；旧 demo 数据回退兼容
+- [x] **移动端导航** — 链接区横向滚动（隐藏滚动条），不再溢出裁切
+- [x] **RSS / sitemap / OG 分享标签** — `/rss.xml`、`/sitemap.xml`、canonical + Open Graph + Twitter Card
+- [x] **工程修复** — CI 改 `npm ci` + `npm run build`（含 astro check）；admin 生产构建输出重定向页；清除死代码与未用函数；React 18 类型固定到 @types/react 18
 
 ---
 
@@ -176,6 +183,15 @@ life-timeline/
 ---
 
 ## 变更记录
+
+### 2026-08-02 — v1.4.0 (管理后台重构 + 全站体检修复)
+
+- **feat**: 管理后台改为三栏内容工作室（左图标导航 + 列表 + 编辑区），模块带数量角标；移动端隐藏列表列
+- **fix**: 「＋ 新建」无法打开空白模板 — 新增 `isNew` 状态区分「未选中」与「新建中」，点新建立即出现空白表单
+- **fix**: 媒体上传依赖本地 kkFileView 导致线上画廊失效 — 上传改存 `public/uploads/`，`getFileUrl`/`getPreviewUrl` 本地资源补站点 base；旧 `demo/` 数据回退兼容；删除接口本地优先
+- **feat**: `/rss.xml` 博客订阅 + `/sitemap.xml` 全站地图 + Layout 全局 canonical/OG/Twitter 分享标签
+- **fix**: 移动端导航 9 个链接溢出 — 链接区横向滚动（`.no-scrollbar`）
+- **chore**: CI 改 `npm ci` + `npm run build`（含 astro check）；admin 页生产构建输出重定向首页；删除 `uploadToKkFileView` 未用函数与 `delete_modal` 死代码；`@types/react` 固定 18.x 消除类型弃用提示；版本号 1.4.0
 
 ### 2026-08-01 — v1.3.0 (人生清单 + 事件配图 + 生命格子增强)
 
@@ -456,3 +472,18 @@ life-timeline/
 - 现象：本会话无内置 image_gen 工具、未配置 `OPENAI_API_KEY`，AI 出图不可用
 - 解决：先用纯 Python（zlib+struct 直接写 PNG）生成本地插画式占位图（渐变天空 + 剪影场景），后续可随时替换为真实照片或 AI 图
 - 教训：示例图优先本地化；占位图与真实图通过同一 `images` 字段切换，零迁移
+
+### 2026-08-02 — 全站体检与媒体本地化（v1.4.0）
+
+**1. 媒体文件指向 localhost 导致线上画廊失效**
+
+- 现象：上传接口把文件写入本地 kkFileView，`getFileUrl` 拼出 `http://localhost:8012/demo/...`——GitHub Pages 上线后，访客浏览器打开的是访客自己机器的 8012 端口，画廊图片/文件全部失败
+- 定位：`site.config.kkFileViewUrl` 是本地服务地址，被当作线上资源地址使用；上传链路没有落盘到仓库
+- 解决：上传改存 `public/uploads/`（随构建发布），`getFileUrl`/`getPreviewUrl` 对非 `demo/` 路径自动补站点 base；删除接口本地优先，旧 `demo/` 数据回退 kkFileView
+- 教训：本地预览服务地址（localhost）永远不能出现在线上资源的 URL 里；展示型文件优先入 `public/` 随站发布
+
+**2. React 18 配 @types/react 19 的类型错配**
+
+- 现象：`astro check` 报 `FormEvent is deprecated`（ts6385）等提示，实际是依赖解析把类型升到了 @types/react 19，而项目用 React 18
+- 解决：显式固定 `devDependencies`：`@types/react@^18.3` + `@types/react-dom@^18.3`，提示清零
+- 教训：`@types/*` 不显式声明时会跟随传递依赖升级，大版本类型错配会产生误导性告警；框架主版本对应的类型应显式锁定

@@ -29,11 +29,11 @@ jobs:
           cache-dependency-path: life-timeline/package-lock.json
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
         working-directory: life-timeline
 
       - name: Build
-        run: npx astro build
+        run: npm run build
         working-directory: life-timeline
 
       - name: Upload artifact

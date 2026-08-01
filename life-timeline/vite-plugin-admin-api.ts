@@ -64,62 +64,6 @@ function isPathWithin(baseDir: string, targetPath: string): boolean {
 }
 
 /**
- * 将文件 Buffer 上传到 kkFileView（multipart/form-data）
- * 返回 kkFileView 的相对路径 "demo/{filename}"
- */
-function uploadToKkFileView(filename: string, buffer: Buffer): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const boundary = '----FormBoundary' + Math.random().toString(36).slice(2);
-    const CRLF = '\r\n';
-
-    const header =
-      `--${boundary}${CRLF}` +
-      `Content-Disposition: form-data; name="file"; filename="${filename}"${CRLF}` +
-      `Content-Type: application/octet-stream${CRLF}${CRLF}`;
-    const footer = `${CRLF}--${boundary}--${CRLF}`;
-
-    const body = Buffer.concat([
-      Buffer.from(header, 'utf8'),
-      buffer,
-      Buffer.from(footer, 'utf8'),
-    ] as unknown as readonly Uint8Array[]);
-
-    const req = http.request({
-      hostname: KKFILEVIEW_HOST,
-      port: KKFILEVIEW_PORT,
-      path: '/fileUpload',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'multipart/form-data; boundary=' + boundary,
-        'Content-Length': body.length.toString(),
-      },
-    }, (response) => {
-      let data = '';
-      response.on('data', (chunk: Buffer) => data += chunk.toString());
-      response.on('end', () => {
-        try {
-          const result = JSON.parse(data);
-          if (result.code === 0) {
-            resolve(`demo/${filename}`);
-          } else {
-            reject(new Error(result.msg || '上传到 kkFileView 失败'));
-          }
-        } catch {
-          reject(new Error(`kkFileView 返回异常: ${data.slice(0, 200)}`));
-        }
-      });
-    });
-
-    req.on('error', (err: NodeJS.ErrnoException) => {
-      reject(new Error(`无法连接 kkFileView 服务 (${KKFILEVIEW_HOST}:${KKFILEVIEW_PORT}): ${err.message}`));
-    });
-
-    req.write(body);
-    req.end();
-  });
-}
-
-/**
  * Vite 插件：在开发模式下提供管理后台 API
  * - POST /api/write-event  创建事件
  * - DELETE /api/delete-event 删除事件
@@ -196,19 +140,21 @@ export function adminApiPlugin(): Plugin {
             const baseName = sanitizeFilename(filename.replace(/\.[^.]+$/, '')).slice(0, 60);
             const uniqueName = `${Date.now()}-${baseName}.${ext}`;
 
-            // 上传到 kkFileView（作为文件存储和预览服务）
-            uploadToKkFileView(uniqueName, buffer).then((kkPath) => {
-              // kkPath 格式: "demo/{filename}"
+            // 上传到本地 public/uploads/（随站点发布，线上可访问；不再依赖本地 kkFileView）
+            try {
+              const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+              fs.mkdirSync(uploadDir, { recursive: true });
+              fs.writeFileSync(path.join(uploadDir, uniqueName), buffer);
               res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({ success: true, url: kkPath, filename: uniqueName, size: buffer.length }));
-            }).catch((uploadErr) => {
-              res.statusCode = 502;
+              res.end(JSON.stringify({ success: true, url: `uploads/${uniqueName}`, filename: uniqueName, size: buffer.length }));
+            } catch (writeErr) {
+              res.statusCode = 500;
               res.setHeader('Content-Type', 'application/json');
               res.end(JSON.stringify({
-                error: 'kkFileView 上传失败',
-                detail: uploadErr instanceof Error ? uploadErr.message : String(uploadErr),
+                error: '本地存储失败',
+                detail: writeErr instanceof Error ? writeErr.message : String(writeErr),
               }));
-            });
+            }
           } catch (err) {
             res.statusCode = 500;
             res.setHeader('Content-Type', 'application/json');
@@ -612,6 +558,26 @@ longGoal: "${escapeYaml(longGoal || '')}"
               return;
             }
 
+            // 新上传文件存于 public/uploads/，直接本地删除
+            const localPath = path.join(process.cwd(), 'public', 'uploads', path.basename(filename));
+            if (fs.existsSync(localPath)) {
+              try {
+                fs.unlinkSync(localPath);
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ success: true }));
+                return;
+              } catch (localErr) {
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({
+                  error: '本地文件删除失败',
+                  detail: localErr instanceof Error ? localErr.message : String(localErr),
+                }));
+                return;
+              }
+            }
+
+            // 旧数据（kkFileView demo/ 文件）回退到 kkFileView 删除
             // 调用 kkFileView 删除文件
             // kkFileView /deleteFile 要求: fileName={base64("http://demo/"+filename)}&password=123456
             const encodedName = encodeURIComponent(

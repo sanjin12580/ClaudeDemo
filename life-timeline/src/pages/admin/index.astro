@@ -8,6 +8,12 @@ import { loadGoals } from '../../lib/parseGoals';
 import { loadMedia } from '../../lib/parseMedia';
 import { loadConsumptions } from '../../lib/parseConsumptions';
 import { t } from '../../lib/i18n';
+import { to } from '../../lib/base';
+
+// 管理后台仅本地开发使用：生产构建输出为跳转首页的静态重定向页
+if (!import.meta.env.DEV) {
+  return Astro.redirect(to('/'));
+}
 
 const allEvents = await loadEvents(true);
 const allPosts = await loadPosts(true);

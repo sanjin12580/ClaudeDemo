@@ -124,7 +124,7 @@ export default function TravelMap({ spots }: Props) {
           coordinateSystem: 'geo',
           data: scatterData,
           symbol: 'path://M0,-9 L2.1,-2.9 L8.6,-2.9 L3.4,1.3 L5.4,8.1 L0,4 L-5.4,8.1 L-3.4,1.3 L-8.6,-2.9 L-2.1,-2.9 Z',
-          symbolSize: (val: number[], params: any) => Math.max(20, (params?.data?.eventCount || 1) * 12),
+          symbolSize: (_val: number[], params: any) => Math.max(20, (params?.data?.eventCount || 1) * 12),
           itemStyle: {
             color: 'rgba(250, 204, 21, 0.75)',
             borderColor: 'rgba(234, 179, 8, 0.9)',
@@ -148,7 +148,7 @@ export default function TravelMap({ spots }: Props) {
           type: 'effectScatter',
           coordinateSystem: 'geo',
           data: scatterData,
-          symbolSize: (val: number[], params: any) => Math.max(16, (params?.data?.eventCount || 1) * 10),
+          symbolSize: (_val: number[], params: any) => Math.max(16, (params?.data?.eventCount || 1) * 10),
           showEffectOn: 'emphasis',
           rippleEffect: { brushType: 'stroke', scale: 3, period: 3 },
           itemStyle: { color: 'rgba(250, 204, 21, 0.4)' },

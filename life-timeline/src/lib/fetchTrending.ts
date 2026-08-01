@@ -50,11 +50,6 @@ function daysAgo(days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** 延迟函数 */
-function delay(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
 // ============================================================
 // API 调用
 // ============================================================

@@ -5,6 +5,7 @@
 import { siteConfig } from '../site.config';
 import type { FileType } from './types';
 import { ALLOWED_EXTENSIONS, classifyFileType, FILE_TYPE_ICONS, getIconForFile } from './types';
+import { to } from './base';
 
 /** 将字符串转为 Base64（UTF-8 安全） */
 function toBase64(str: string): string {
@@ -16,6 +17,11 @@ function toBase64(str: string): string {
 
 /** 根据 kkFileView 相对路径（如 "demo/xxx.pdf"）生成预览 URL */
 export function getPreviewUrl(relativePath: string, base?: string): string {
+  if (!relativePath) return '';
+  // 本地 public/ 资源（uploads/ 等）：直接返回站内 URL，浏览器可预览 PDF/图片/视频，Office 文档降级为下载
+  if (!relativePath.startsWith('demo/')) {
+    return getFileUrl(relativePath, base);
+  }
   const kkBase = base || siteConfig.kkFileViewUrl;
   // 构造 kkFileView 上的完整文件 URL
   // kkFileView 通过 WebConfig.addResourceHandlers 将 fileDir 映射为静态资源
@@ -28,8 +34,15 @@ export function getPreviewUrl(relativePath: string, base?: string): string {
 
 /** 根据 kkFileView 相对路径构造文件访问 URL（用于图片直接加载） */
 export function getFileUrl(relativePath: string, base?: string): string {
-  const kkBase = base || siteConfig.kkFileViewUrl;
-  return `${kkBase}/${relativePath}`;
+  if (!relativePath) return '';
+  if (/^https?:\/\//.test(relativePath)) return relativePath;
+  // 旧数据（kkFileView demo/ 文件）保持原逻辑
+  if (relativePath.startsWith('demo/')) {
+    const kkBase = base || siteConfig.kkFileViewUrl;
+    return `${kkBase}/${relativePath}`;
+  }
+  // 本地 public/ 资源：补站点 base（与封面 coverUrl 一致）
+  return to(relativePath.replace(/^\/+/, ''));
 }
 
 /** 根据扩展名获取文件大类 */

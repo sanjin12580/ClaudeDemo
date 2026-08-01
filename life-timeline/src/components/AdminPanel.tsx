@@ -4,6 +4,7 @@ import type { ConsumptionItem, MetadataCandidate } from '../lib/parseConsumption
 import { CATEGORY_COLORS, ALLOWED_EXTENSIONS, classifyFileType, getIconForFile } from '../lib/types';
 import { useI18n } from '../lib/i18n';
 import { getFileUrl } from '../lib/filePreview';
+import MarkdownToolbar from './MarkdownToolbar';
 
 const CATEGORIES: Category[] = ['教育', '工作', '旅行', '健康', '关系', '项目', '其他'];
 
@@ -48,22 +49,133 @@ interface Props {
 // ============================================================
 function renderMarkdown(text: string): string {
   if (!text) return '<p class="text-gray-400 dark:text-gray-500 italic">（空内容）</p>';
-  let html = text
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const stashed: string[] = [];
+  const stash = (htmlStr: string) => {
+    stashed.push(htmlStr);
+    return `\u0000${stashed.length - 1}\u0000`;
+  };
+
+  let html = text;
+
+  // 1) 代码块（先于转义处理，带语言标签，支持 SQL 等）
+  html = html.replace(/```([\w+-]*)\n?([\s\S]*?)```/g, (_m, lang: string, code: string) => {
+    const safe = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n$/, '');
+    const langTag = lang || 'text';
+    return stash(
+      `<div class="my-3 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">` +
+      `<div class="px-3 py-1 bg-gray-100 dark:bg-gray-800 text-[10px] font-mono text-gray-500 dark:text-gray-400">${langTag}</div>` +
+      `<pre class="p-3 overflow-x-auto text-xs leading-relaxed"><code class="language-${langTag}">${safe}</code></pre></div>`
+    );
+  });
+
+  // 2) 原生 HTML 块（视频/音频/iframe/details）整体保留
+  html = html.replace(/<(iframe|video|audio|details|summary)[^>]*>[\s\S]*?<\/\1>/gi, (m) => stash(m));
+
+  // 3) 表格（连续以 | 开头的行）
+  html = html.replace(/((?:^\|.*\|[ \t]*\r?\n)+)/gm, (block) => {
+    const lines = block.trim().split('\n');
+    const [head, sep, ...body] = lines;
+    if (!sep || !/^\|?[\s:|-]+\|?$/.test(sep.trim())) return block;
+    const cells = (l: string) => l.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim());
+    const ths = cells(head)
+      .map((c) => `<th class="px-3 py-1.5 border border-gray-200 dark:border-gray-700 text-left">${c}</th>`)
+      .join('');
+    const trs = body
+      .map((l) => `<tr>${cells(l).map((c) => `<td class="px-3 py-1.5 border border-gray-200 dark:border-gray-700">${c}</td>`).join('')}</tr>`)
+      .join('');
+    return stash(
+      `<div class="my-3 overflow-x-auto"><table class="w-full text-xs border-collapse">` +
+      `<thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table></div>`
+    );
+  });
+
+  // 4) 转义剩余文本（< 已足以防注入；> 保留以便引用块 `> ` 可被识别）
+  html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+  // 5) 块级语法
+  html = html
     .replace(/^### (.+)$/gm, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>')
     .replace(/^## (.+)$/gm, '<h2 class="text-xl font-semibold mt-5 mb-2">$1</h2>')
     .replace(/^# (.+)$/gm, '<h1 class="text-2xl font-bold mt-6 mb-3">$1</h1>')
+    .replace(/^- \[x\] (.+)$/gim, '<label class="flex items-center gap-2 my-1 text-sm"><input type="checkbox" checked disabled class="checkbox checkbox-xs" /> <span class="line-through text-gray-400">$1</span></label>')
+    .replace(/^- \[ \] (.+)$/gim, '<label class="flex items-center gap-2 my-1 text-sm"><input type="checkbox" disabled class="checkbox checkbox-xs" /> $1</label>')
+    .replace(/^> (.+)$/gm, '<blockquote class="border-l-2 border-green-400 pl-3 italic text-gray-500 dark:text-gray-400 my-2">$1</blockquote>')
+    .replace(/^- (.+)$/gm, '<li class="ml-4 list-disc">$1</li>')
+    .replace(/^\d+\. (.+)$/gm, '<li class="ml-4 list-decimal">$1</li>')
+    .replace(/^---+$/gm, '<hr class="my-4 border-gray-200 dark:border-gray-700" />');
+
+  // 6) 行内语法
+  html = html
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="text-green-600 dark:text-green-400 underline">$1</a>')
+    .replace(/~~(.+?)~~/g, '<del>$1</del>')
     .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="rounded-lg max-w-full my-2" />')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="text-green-600 dark:text-green-400 underline">$1</a>')
     .replace(/`([^`]+)`/g, '<code class="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">$1</code>')
-    .replace(/^> (.+)$/gm, '<blockquote class="border-l-2 border-green-400 pl-3 italic text-gray-500 dark:text-gray-400 dark:text-gray-400 dark:text-gray-500 my-2">$1</blockquote>')
-    .replace(/^- (.+)$/gm, '<li class="ml-4 list-disc">$1</li>')
-    .replace(/^---$/gm, '<hr class="my-4 border-gray-200 dark:border-gray-700" />')
     .replace(/\n\n+/g, '</p><p class="mb-2 leading-relaxed">');
 
+  // 7) 还原占位符
+  stashed.forEach((p, i) => {
+    html = html.split(`\u0000${i}\u0000`).join(p);
+  });
+
   return `<p class="mb-2 leading-relaxed">${html}</p>`;
+}
+
+// ============================================================
+// TagInput — 标签 chips 输入（Enter/逗号添加，×/退格删除）
+// ============================================================
+function TagInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+  const [draft, setDraft] = useState('');
+  const tags = value.split(/[,，]/).map((s) => s.trim()).filter(Boolean);
+
+  const commit = (raw: string) => {
+    const tag = raw.trim();
+    if (!tag) return;
+    if (!tags.includes(tag)) onChange([...tags, tag].join(', '));
+    setDraft('');
+  };
+
+  return (
+    <div>
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-1.5">
+          {tags.map((tag, i) => (
+            <span
+              key={tag}
+              className="inline-flex items-center gap-1 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 text-xs px-2 py-0.5"
+            >
+              #{tag}
+              <button
+                type="button"
+                onClick={() => onChange(tags.filter((_, j) => j !== i).join(', '))}
+                className="text-gray-400 hover:text-red-500 font-bold leading-none"
+                aria-label={`移除 ${tag}`}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <input
+        type="text"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            commit(draft);
+          } else if (e.key === 'Backspace' && !draft && tags.length) {
+            onChange(tags.slice(0, -1).join(', '));
+          }
+        }}
+        onBlur={() => commit(draft)}
+        placeholder={placeholder || '回车或逗号添加标签'}
+        className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+      />
+    </div>
+  );
 }
 
 // ============================================================
@@ -142,10 +254,37 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
 
   // 编辑状态
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
+  /** 是否处于「新建」状态（区别于未选中任何条目） */
+  const [isNew, setIsNew] = useState(false);
   const [form, setForm] = useState<FormData>(EMPTY_FORM);
   const [editTab, setEditTab] = useState<'edit' | 'preview'>('edit');
   const [status, setStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
+
+  // ========== 统一反馈：toast / 确认弹窗 / 未保存标记 ==========
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const toastTimer = useRef<number | null>(null);
+  const notify = useCallback((type: 'success' | 'error', text: string) => {
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    setToast({ type, text });
+    toastTimer.current = window.setTimeout(() => setToast(null), 2500);
+  }, []);
+
+  const [confirmState, setConfirmState] = useState<{
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    confirmText?: string;
+    danger?: boolean;
+  } | null>(null);
+  const askConfirm = useCallback(
+    (title: string, message: string, onConfirm: () => void, opts?: { confirmText?: string; danger?: boolean }) => {
+      setConfirmState({ title, message, onConfirm, confirmText: opts?.confirmText, danger: opts?.danger });
+    },
+    []
+  );
+
+  const [dirty, setDirty] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<EventMeta | PostMeta | { id: string; title: string; mode: string } | null>(null);
 
   // 图片上传
@@ -159,19 +298,44 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
   const [showMediaPicker, setShowMediaPicker] = useState(false);
   const [mediaPickerFilter, setMediaPickerFilter] = useState('');
 
+  // ========== 工具栏插入 ==========
+  /** 把 Markdown 模板插入光标位置（{{sel}} 替换为选中文本） */
+  const insertContent = useCallback((template: string) => {
+    const ta = textareaRef.current;
+    const content = form.content;
+    const start = ta?.selectionStart ?? content.length;
+    const end = ta?.selectionEnd ?? content.length;
+    const sel = content.slice(start, end);
+    const snippet = template.split('{{sel}}').join(sel);
+    const next = content.slice(0, start) + snippet + content.slice(end);
+    update('content', next);
+    requestAnimationFrame(() => {
+      if (!ta) return;
+      ta.focus();
+      ta.setSelectionRange(start + snippet.length, start + snippet.length);
+    });
+  }, [form.content]);
+
+  /** 工具栏"上传并插入"标记：上传成功后自动插入到正文 */
+  const pendingImageInsertRef = useRef(false);
+  const handleToolbarUpload = useCallback(() => {
+    pendingImageInsertRef.current = true;
+    mediaFileInputRef.current?.click();
+  }, []);
+
   // ========== 文件上传（支持图片+所有文件类型） ==========
   async function handleUpload(file: File) {
     if (file.size > 50 * 1024 * 1024) {
-      setUploadMsg('文件不能超过 50MB');
+      setUploadMsg(t.uploadTooLarge);
       return;
     }
     setUploading(true);
-    setUploadMsg('上传中...');
+    setUploadMsg(t.uploading);
     try {
       const reader = new FileReader();
       const dataUrl = await new Promise<string>((resolve, reject) => {
         reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error('文件读取失败'));
+        reader.onerror = () => reject(new Error(t.uploadReadError));
         reader.readAsDataURL(file);
       });
 
@@ -211,14 +375,25 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
           return updated;
         });
 
+        // 工具栏触发的上传：成功后直接把图片/文件插入正文
+        if (pendingImageInsertRef.current) {
+          pendingImageInsertRef.current = false;
+          const url = getFileUrl(result.url);
+          if (fileType === 'image') {
+            insertContent(`\n![${file.name.replace(/\.[^.]+$/, '')}](${url})\n`);
+          } else {
+            insertContent(`\n[${file.name}](${url})\n`);
+          }
+        }
+
         setUploadMsg('');
         setUploading(false);
       } else {
-        setUploadMsg(result.error || '上传失败');
+        setUploadMsg(result.error || t.uploadFailed);
         setUploading(false);
       }
     } catch (err) {
-      setUploadMsg('上传失败');
+      setUploadMsg(t.uploadFailed);
       setUploading(false);
     }
   }
@@ -265,8 +440,9 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
   const filteredCount = mode === 'events' ? filteredEvents.length : filteredPosts.length;
 
   // ========== 加载到表单 ==========
-  const selectEvent = useCallback((event: EventMeta) => {
+  const doSelectEvent = useCallback((event: EventMeta) => {
     setSelectedSlug(event.slug);
+    setIsNew(false);
     setForm({
       date: event.date,
       title: event.title,
@@ -279,11 +455,20 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
     });
     setEditTab('edit');
     setStatus('idle');
-    setMessage('');
+    setDirty(false);
   }, []);
 
-  const selectPost = useCallback((post: PostMeta) => {
+  const selectEvent = useCallback((event: EventMeta) => {
+    if (dirty) {
+      askConfirm(t.unsavedTitle, t.unsavedMessage, () => doSelectEvent(event));
+      return;
+    }
+    doSelectEvent(event);
+  }, [dirty, askConfirm, doSelectEvent]);
+
+  const doSelectPost = useCallback((post: PostMeta) => {
     setSelectedSlug(post.slug);
+    setIsNew(false);
     setForm({
       date: post.date,
       title: post.title,
@@ -296,33 +481,59 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
     });
     setEditTab('edit');
     setStatus('idle');
-    setMessage('');
+    setDirty(false);
   }, []);
 
+  const selectPost = useCallback((post: PostMeta) => {
+    if (dirty) {
+      askConfirm(t.unsavedTitle, t.unsavedMessage, () => doSelectPost(post));
+      return;
+    }
+    doSelectPost(post);
+  }, [dirty, askConfirm, doSelectPost]);
+
   // ========== 新建 ==========
-  const newItem = useCallback(() => {
+  const doNewItem = useCallback(() => {
     setSelectedSlug(null);
+    setIsNew(true);
     setForm(EMPTY_FORM);
     setEditTab('edit');
     setStatus('idle');
-    setMessage('');
     setSearchQuery('');
     setFilterCategory('全部');
+    setDirty(false);
   }, []);
+
+  const newItem = useCallback(() => {
+    if (dirty) {
+      askConfirm(t.unsavedTitle, t.unsavedMessage, doNewItem, { confirmText: t.continueBtn });
+      return;
+    }
+    doNewItem();
+  }, [dirty, askConfirm, doNewItem]);
 
   // ========== 切换模式时重置 ==========
   function switchMode(newMode: AdminMode) {
-    setMode(newMode);
-    setSelectedSlug(null);
-    setSelectedGoalId(null);
-    setForm(EMPTY_FORM);
-    setGoalForm(EMPTY_GOAL_FORM);
-    resetConsumptionForm();
-    setEditTab('edit');
-    setStatus('idle');
-    setMessage('');
-    setSearchQuery('');
-    setFilterCategory('全部');
+    const doSwitch = () => {
+      setMode(newMode);
+      setSelectedSlug(null);
+      setIsNew(false);
+      setSelectedGoalId(null);
+      setForm(EMPTY_FORM);
+      setGoalForm(EMPTY_GOAL_FORM);
+      resetConsumptionForm();
+      setEditTab('edit');
+      setStatus('idle');
+      setMessage('');
+      setSearchQuery('');
+      setFilterCategory('全部');
+      setDirty(false);
+    };
+    if (dirty) {
+      askConfirm(t.unsavedTitle, t.unsavedMessage, doSwitch, { confirmText: t.continueBtn });
+      return;
+    }
+    doSwitch();
   }
 
   // ========== 表单更新 ==========
@@ -368,16 +579,49 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
       });
       const data = await resp.json();
       if (resp.ok && data.success) {
-        setStatus('success');
-        setMessage(t.saved(data.path));
-        setTimeout(() => window.location.reload(), 800);
+        if (mode === 'events') {
+          const slug = data.path.replace('src/content/events/', '').replace(/\.md$/, '');
+          const meta: EventMeta = {
+            slug,
+            date: form.date,
+            title: form.title,
+            category: form.category,
+            tags: form.tags.split(/[,，]/).map((tg) => tg.trim()).filter(Boolean),
+            importance: form.importance,
+            location: form.location || undefined,
+            draft: form.draft,
+            body: form.content,
+            images: [],
+          };
+          setEvents((prev) =>
+            [meta, ...prev.filter((e) => e.slug !== slug)].sort((a, b) => a.date.localeCompare(b.date))
+          );
+          setSelectedSlug(slug);
+          setIsNew(false);
+        } else {
+          const slug = data.path.replace('src/content/blog/', '').replace(/\.md$/, '');
+          const meta: PostMeta = {
+            slug,
+            date: form.date,
+            title: form.title,
+            tags: form.tags.split(/[,，]/).map((tg) => tg.trim()).filter(Boolean),
+            draft: form.draft,
+            body: form.content,
+          };
+          setPosts((prev) =>
+            [meta, ...prev.filter((p) => p.slug !== slug)].sort((a, b) => b.date.localeCompare(a.date))
+          );
+          setSelectedSlug(slug);
+          setIsNew(false);
+        }
+        setStatus('idle');
+        setDirty(false);
+        notify('success', t.saved(data.path));
       } else {
-        setStatus('error');
-        setMessage(data.error || t.saveFailed);
+        notify('error', data.error || t.saveFailed);
       }
     } catch (err) {
-      setStatus('error');
-      setMessage(t.networkError(err instanceof Error ? err.message : t.unknownError));
+      notify('error', t.networkError(err instanceof Error ? err.message : t.unknownError));
     }
   }
 
@@ -407,16 +651,14 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
       });
       const data = await resp.json();
       if (resp.ok && data.success) {
-        setStatus('success');
-        setMessage(t.saved(data.path));
-        setTimeout(() => window.location.reload(), 800);
+        setStatus('idle');
+        setDirty(false);
+        notify('success', t.saved(data.path));
       } else {
-        setStatus('error');
-        setMessage(data.error || t.saveFailed);
+        notify('error', data.error || t.saveFailed);
       }
     } catch (err) {
-      setStatus('error');
-      setMessage(t.networkError(err instanceof Error ? err.message : t.unknownError));
+      notify('error', t.networkError(err instanceof Error ? err.message : t.unknownError));
     }
   }
 
@@ -439,6 +681,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
     setMetadataCandidates([]);
     setMetadataHint('');
     setFetchingMeta(false);
+    setDirty(false);
   }
 
   function selectConsumption(id: string) {
@@ -460,12 +703,13 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
     setConsumptionSourceUrl(c.sourceUrl ?? '');
     setMetadataCandidates([]);
     setMetadataHint('');
+    setDirty(false);
   }
 
   // ========== 元数据自动获取 ==========
   async function handleFetchMetadata() {
     if (!consumptionTitle.trim()) {
-      alert('请先填写标题');
+      notify('error', t.metadataTitleRequired);
       return;
     }
     setFetchingMeta(true);
@@ -532,25 +776,23 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
       relatedEvents: goal.relatedEvents.join(', '),
     });
     setStatus('idle');
-    setMessage('');
+    setDirty(false);
   }, []);
 
   const newGoal = useCallback(() => {
     setSelectedGoalId(null);
     setGoalForm(EMPTY_GOAL_FORM);
     setStatus('idle');
-    setMessage('');
+    setDirty(false);
   }, []);
 
   async function handleGoalSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!goalForm.title) {
-      setStatus('error');
-      setMessage(t.validationError);
+      notify('error', t.validationError);
       return;
     }
     setStatus('saving');
-    setMessage('');
 
     const newGoal: Goal = {
       id: selectedGoalId || `g-${Date.now()}`,
@@ -578,16 +820,14 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
       const data = await resp.json();
       if (resp.ok && data.success) {
         setGoals(updatedGoals);
-        setStatus('success');
-        setMessage(t.goalSaved(data.path));
-        setTimeout(() => window.location.reload(), 800);
+        setStatus('idle');
+        setDirty(false);
+        notify('success', t.goalSaved(data.path));
       } else {
-        setStatus('error');
-        setMessage(data.error || t.saveFailed);
+        notify('error', data.error || t.saveFailed);
       }
     } catch (err) {
-      setStatus('error');
-      setMessage(t.networkError(err instanceof Error ? err.message : t.unknownError));
+      notify('error', t.networkError(err instanceof Error ? err.message : t.unknownError));
     }
   }
 
@@ -605,15 +845,13 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
         setGoals(updatedGoals);
         setSelectedGoalId(null);
         setGoalForm(EMPTY_GOAL_FORM);
-        setMessage(t.deleted);
-        setStatus('success');
+        setDirty(false);
+        notify('success', t.deleted);
       } else {
-        setMessage(data.error || t.deleteFailed);
-        setStatus('error');
+        notify('error', data.error || t.deleteFailed);
       }
     } catch (err) {
-      setMessage(t.networkError(err instanceof Error ? err.message : t.unknownError));
-      setStatus('error');
+      notify('error', t.networkError(err instanceof Error ? err.message : t.unknownError));
     }
   }
 
@@ -621,11 +859,10 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
   async function handleConsumptionSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!consumptionTitle.trim()) {
-      alert('请填写标题');
+      notify('error', t.consumptionTitleRequired);
       return;
     }
     setStatus('saving');
-    setMessage('');
 
     const newItem: ConsumptionItem = {
       id: consumptionId || `c-${Date.now()}`,
@@ -657,13 +894,13 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
       const json = await resp.json();
       if (resp.ok && json.success) {
         setConsumptions(updated);
-        setStatus('success');
-        setMessage(t.consumptionSaved(json.path));
+        setStatus('idle');
+        setDirty(false);
+        notify('success', t.consumptionSaved(json.path));
         resetConsumptionForm();
       }
     } catch (err) {
-      setStatus('error');
-      setMessage(t.networkError(err instanceof Error ? err.message : ''));
+      notify('error', t.networkError(err instanceof Error ? err.message : ''));
     }
   }
 
@@ -675,7 +912,6 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
       title: c.title,
       mode: 'consumptions',
     });
-    (document.getElementById('delete_modal') as HTMLDialogElement)?.showModal();
   }
 
   // ========== 删除 ==========
@@ -696,15 +932,13 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
         if (resp.ok && json.success) {
           setConsumptions(updated);
           if (consumptionId === dt.id) resetConsumptionForm();
-          setMessage(t.deleted);
-          setStatus('success');
+          setDirty(false);
+          notify('success', t.deleted);
         } else {
-          setMessage(json.error || t.deleteFailed);
-          setStatus('error');
+          notify('error', json.error || t.deleteFailed);
         }
       } catch (err) {
-        setMessage(t.networkError(err instanceof Error ? err.message : t.unknownError));
-        setStatus('error');
+        notify('error', t.networkError(err instanceof Error ? err.message : t.unknownError));
       }
       setDeleteTarget(null);
       return;
@@ -732,89 +966,81 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
           setPosts((prev) => prev.filter((p) => p.slug !== target.slug));
         }
         if (selectedSlug === target.slug) newItem();
-        setMessage(t.deleted);
-        setStatus('success');
+        setDirty(false);
+        notify('success', t.deleted);
       } else {
-        setMessage(data.error || t.deleteFailed);
-        setStatus('error');
+        notify('error', data.error || t.deleteFailed);
       }
     } catch (err) {
-      setMessage(t.networkError(err instanceof Error ? err.message : t.unknownError));
-      setStatus('error');
+      notify('error', t.networkError(err instanceof Error ? err.message : t.unknownError));
     }
     setDeleteTarget(null);
   }
 
-  return (
-    <div className="flex gap-0 min-h-[600px] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden bg-white dark:bg-gray-900">
-      {/* ========== 左侧：列表 ========== */}
-      <aside className="w-80 shrink-0 border-r border-gray-200 dark:border-gray-800 flex flex-col bg-gray-50/50 dark:bg-gray-950/50">
-        {/* Tab 切换 */}
-        <div className="flex border-b border-gray-200 dark:border-gray-800">
-          <button
-            onClick={() => switchMode('events')}
-            className={`flex-1 text-sm px-4 py-3 transition-colors font-medium
-              ${mode === 'events'
-                ? 'text-green-600 dark:text-green-400 border-b-2 border-green-500 bg-white dark:bg-gray-900'
-                : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 border-b-2 border-transparent'
-              }`}
-          >
-            {t.tabEvents}
-          </button>
-          <button
-            onClick={() => switchMode('posts')}
-            className={`flex-1 text-sm px-4 py-3 transition-colors font-medium
-              ${mode === 'posts'
-                ? 'text-green-600 dark:text-green-400 border-b-2 border-green-500 bg-white dark:bg-gray-900'
-                : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 border-b-2 border-transparent'
-              }`}
-          >
-            {t.tabPosts}
-          </button>
-          <button
-            onClick={() => switchMode('profile')}
-            className={`flex-1 text-sm px-4 py-3 transition-colors font-medium
-              ${mode === 'profile'
-                ? 'text-green-600 dark:text-green-400 border-b-2 border-green-500 bg-white dark:bg-gray-900'
-                : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 border-b-2 border-transparent'
-              }`}
-          >
-            {t.tabProfile}
-          </button>
-          <button
-            onClick={() => switchMode('goals')}
-            className={`flex-1 text-sm px-4 py-3 transition-colors font-medium
-              ${mode === 'goals'
-                ? 'text-green-600 dark:text-green-400 border-b-2 border-green-500 bg-white dark:bg-gray-900'
-                : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 border-b-2 border-transparent'
-              }`}
-          >
-            {t.tabGoals}
-          </button>
-          <button
-            onClick={() => switchMode('media')}
-            className={`flex-1 text-sm px-4 py-3 transition-colors font-medium
-              ${mode === 'media'
-                ? 'text-green-600 dark:text-green-400 border-b-2 border-green-500 bg-white dark:bg-gray-900'
-                : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 border-b-2 border-transparent'
-              }`}
-          >
-            {t.tabMedia}
-          </button>
-          <button
-            onClick={() => switchMode('consumptions')}
-            className={`flex-1 text-sm px-4 py-3 transition-colors font-medium
-              ${mode === 'consumptions'
-                ? 'text-green-600 dark:text-green-400 border-b-2 border-green-500 bg-white dark:bg-gray-900'
-                : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 border-b-2 border-transparent'
-              }`}
-          >
-            {t.tabConsumptions}
-          </button>
-        </div>
+  // 顶部模块 Tab（带图标与数量）
+  const tabItems: Array<{ key: AdminMode; label: string; icon: string; count: number }> = [
+    { key: 'events', label: t.tabEvents, icon: '📅', count: events.length },
+    { key: 'posts', label: t.tabPosts, icon: '📝', count: posts.length },
+    { key: 'consumptions', label: t.tabConsumptions, icon: '📚', count: consumptions.length },
+    { key: 'goals', label: t.tabGoals, icon: '🎯', count: goals.length },
+    { key: 'media', label: t.tabMedia, icon: '🖼️', count: media.length },
+    { key: 'profile', label: t.tabProfile, icon: '👤', count: initialProfile ? 1 : 0 },
+  ];
 
+  return (
+    <div className="flex flex-col min-h-[600px] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden bg-white dark:bg-gray-900">
+      {/* 全局隐藏文件输入（工具栏上传 / 媒体上传共用） */}
+      <input
+        ref={mediaFileInputRef}
+        type="file"
+        accept={ALL_EXTENSIONS.map((e) => `.${e}`).join(',')}
+        onChange={handleFileSelect}
+        className="hidden"
+      />
+
+      <div className="flex flex-1 min-h-0">
+      {/* ========== 左侧模块导航（图标 + 数量） ========== */}
+      <nav
+        className="w-16 shrink-0 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 py-2 flex flex-col items-center gap-1"
+        aria-label="模块导航"
+      >
+        {tabItems.map((tab) => {
+          const active = mode === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => switchMode(tab.key)}
+              title={`${tab.label} · ${tab.count}`}
+              aria-current={active ? 'page' : undefined}
+              className={`w-12 flex flex-col items-center gap-0.5 py-2 rounded-xl text-[10px] transition-colors ${
+                active
+                  ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 font-medium'
+                  : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
+              }`}
+            >
+              <span className="relative text-base leading-none">
+                {tab.icon}
+                <span
+                  className={`absolute -top-1.5 -right-2.5 text-[9px] leading-none px-1 py-0.5 rounded-full ${
+                    active
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              </span>
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* ========== 左侧：列表 ========== */}
+      {mode !== 'profile' && (
+      <aside className="w-72 shrink-0 border-r border-gray-200 dark:border-gray-800 hidden md:flex flex-col bg-gray-50/50 dark:bg-gray-950/50">
         {/* 列表头部 — 仅在事件/文章模式下显示 */}
-        {mode !== 'profile' && mode !== 'goals' && mode !== 'consumptions' && (<>
+        {mode !== 'goals' && mode !== 'consumptions' && (<>
         <div className="p-4 border-b border-gray-200 dark:border-gray-800 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-sm">{mode === 'events' ? t.eventList : t.postList}</h2>
@@ -1050,6 +1276,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
                           description: item.description || '',
                           album: item.album === '未分类' ? '' : item.album,
                         });
+                        setDirty(false);
                       }}
                       className={`p-3 cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-800
                         ${selectedMediaId === item.id ? 'bg-green-50 dark:bg-green-950 border-l-2 border-green-500' : 'border-l-2 border-transparent'}`}
@@ -1074,11 +1301,12 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
           </>
         )}
       </aside>
+      )}
 
       {/* ========== 右侧：编辑面板 ========== */}
       <main className="flex-1 flex flex-col min-w-0">
         {/* Tab 切换 */}
-        {mode !== 'profile' && mode !== 'goals' && mode !== 'consumptions' && mode !== 'media' && (selectedSlug || (mode === 'events' ? !initialEvents.some((e) => e.slug === selectedSlug) : !initialPosts.some((p) => p.slug === selectedSlug))) ? (
+        {mode !== 'profile' && mode !== 'goals' && mode !== 'consumptions' && mode !== 'media' && (selectedSlug || isNew) ? (
           <div className="flex items-center border-b border-gray-200 dark:border-gray-800 px-4">
             <button
               onClick={() => setEditTab('edit')}
@@ -1151,11 +1379,9 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
                   </>
                 )}
                 <input
-                  ref={mediaFileInputRef}
                   type="file"
-                  accept={ALL_EXTENSIONS.map((e) => `.${e}`).join(',')}
-                  onChange={handleFileSelect}
                   className="hidden"
+                  aria-hidden="true"
                 />
               </div>
               {uploadMsg && !uploading && (
@@ -1167,6 +1393,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
               {/* 编辑表单 */}
               {selectedMediaId ? (
                 <form
+                  onChange={() => setDirty(true)}
                   onSubmit={async (e) => {
                     e.preventDefault();
                     if (!selectedMediaId) return;
@@ -1183,43 +1410,42 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
                       }).catch(() => {});
                       return updated;
                     });
-                    setStatus('success');
-                    setMessage('已保存');
-                    setTimeout(() => setMessage(''), 2000);
+                    setDirty(false);
+                    notify('success', t.mediaSaved);
                   }}
                   className="space-y-4"
                 >
                   <div>
-                    <label className="block text-xs font-medium mb-1">{t.mediaTitle}</label>
+                    <label className="block text-sm font-medium mb-1">{t.mediaTitle}</label>
                     <input
                       type="text"
                       value={mediaForm.title}
                       onChange={(e) => setMediaForm((p) => ({ ...p, title: e.target.value }))}
                       placeholder={t.mediaTitlePlaceholder}
-                      className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium mb-1">{t.mediaDesc}</label>
+                    <label className="block text-sm font-medium mb-1">{t.mediaDesc}</label>
                     <input
                       type="text"
                       value={mediaForm.description}
                       onChange={(e) => setMediaForm((p) => ({ ...p, description: e.target.value }))}
                       placeholder={t.mediaDescPlaceholder}
-                      className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium mb-1">{t.mediaAlbum}</label>
+                    <label className="block text-sm font-medium mb-1">{t.mediaAlbum}</label>
                     <input
                       type="text"
                       value={mediaForm.album}
                       onChange={(e) => setMediaForm((p) => ({ ...p, album: e.target.value }))}
                       placeholder={t.mediaAlbumPlaceholder}
                       list="album-suggestions"
-                      className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                     />
                     <datalist id="album-suggestions">
                       {Array.from(new Set(media.map((m) => m.album).filter(Boolean))).map((a) => (
@@ -1237,72 +1463,72 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
                     </button>
                     <button
                       type="button"
-                      onClick={async () => {
+                      onClick={() => {
                         if (!selectedMediaId) return;
                         const item = media.find((m) => m.id === selectedMediaId);
                         if (!item) return;
-                        if (!confirm(t.mediaDeleteConfirm.replace('{title}', item.title || item.filename))) return;
-                        try {
-                          await fetch('/api/delete-media', {
-                            method: 'DELETE',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ filename: item.filename }),
+                        askConfirm(t.deleteTitle, t.mediaDeleteConfirm.replace('{title}', item.title || item.filename), async () => {
+                          try {
+                            await fetch('/api/delete-media', {
+                              method: 'DELETE',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ filename: item.filename }),
+                            });
+                          } catch {}
+                          setMedia((prev) => {
+                            const updated = prev.filter((m) => m.id !== selectedMediaId);
+                            fetch('/api/write-media', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ media: updated }),
+                            }).catch(() => {});
+                            return updated;
                           });
-                        } catch {}
-                        setMedia((prev) => {
-                          const updated = prev.filter((m) => m.id !== selectedMediaId);
-                          fetch('/api/write-media', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ media: updated }),
-                          }).catch(() => {});
-                          return updated;
-                        });
-                        setSelectedMediaId(null);
-                        setMediaForm(EMPTY_MEDIA_FORM);
+                          setSelectedMediaId(null);
+                          setMediaForm(EMPTY_MEDIA_FORM);
+                          setDirty(false);
+                          notify('success', t.deleted);
+                        }, { danger: true });
                       }}
                       className="px-3 py-2 rounded-lg border border-red-200 dark:border-red-900 text-red-500 text-xs font-medium hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
                     >
                       {t.deleteBtn}
                     </button>
-                    {message && (
-                      <span className={`text-xs ${status === 'success' ? 'text-green-600' : 'text-red-500'}`}>{message}</span>
-                    )}
                   </div>
                 </form>
               ) : (
                 <div className="text-center py-8 text-gray-400 dark:text-gray-500 text-sm">
-                  ← 从左侧选择媒体或上传新文件
+                  {t.mediaSelectHint}
                 </div>
               )}
             </div>
           ) : mode === 'goals' ? (
             /* ======== 目标编辑表单 ======== */
-            <form onSubmit={handleGoalSubmit} className="space-y-4 max-w-xl">
+            <form onChange={() => setDirty(true)} onSubmit={handleGoalSubmit} className="space-y-4 max-w-xl">
               <div>
-                <label className="block text-xs font-medium mb-1">{t.goalTitle}</label>
+                <label className="block text-sm font-medium mb-1">{t.goalTitle}</label>
                 <input
                   type="text"
                   value={goalForm.title}
                   onChange={(e) => setGoalForm((p) => ({ ...p, title: e.target.value }))}
                   placeholder="如：完成人生时间线项目"
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium mb-1">{t.goalDesc}</label>
+                <label className="block text-sm font-medium mb-1">{t.goalDesc}</label>
                 <input
                   type="text"
                   value={goalForm.description}
                   onChange={(e) => setGoalForm((p) => ({ ...p, description: e.target.value }))}
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium mb-1">{t.goalProgress}: {goalForm.progress}%</label>
+                  <label className="block text-sm font-medium mb-1">{t.goalProgress}: {goalForm.progress}%</label>
                   <input
                     type="range"
                     min="0"
@@ -1313,11 +1539,11 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium mb-1">{t.goalCategory}</label>
+                  <label className="block text-sm font-medium mb-1">{t.goalCategory}</label>
                   <select
                     value={goalForm.category}
                     onChange={(e) => setGoalForm((p) => ({ ...p, category: e.target.value as 'short' | 'long' }))}
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                   >
                     <option value="short">{t.goalCategoryShort}</option>
                     <option value="long">{t.goalCategoryLong}</option>
@@ -1326,11 +1552,11 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
               </div>
 
               <div>
-                <label className="block text-xs font-medium mb-1">{t.goalStatus}</label>
+                <label className="block text-sm font-medium mb-1">{t.goalStatus}</label>
                 <select
                   value={goalForm.status}
                   onChange={(e) => setGoalForm((p) => ({ ...p, status: e.target.value as 'active' | 'completed' | 'paused' }))}
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                 >
                   <option value="active">{t.goalStatusActive}</option>
                   <option value="completed">{t.goalStatusCompleted}</option>
@@ -1339,12 +1565,12 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
               </div>
 
               <div>
-                <label className="block text-xs font-medium mb-1">{t.goalRelated}</label>
+                <label className="block text-sm font-medium mb-1">{t.goalRelated}</label>
                 <input
                   type="text"
                   value={goalForm.relatedEvents}
                   onChange={(e) => setGoalForm((p) => ({ ...p, relatedEvents: e.target.value }))}
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                 />
               </div>
 
@@ -1363,8 +1589,8 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
                     type="button"
                     onClick={() => {
                       const g = goals.find((g) => g.id === selectedGoalId);
-                      if (g && confirm(t.goalDeleteConfirm.replace('{title}', g.title))) {
-                        handleGoalDelete();
+                      if (g) {
+                        askConfirm(t.deleteTitle, t.goalDeleteConfirm.replace('{title}', g.title), () => handleGoalDelete(), { danger: true });
                       }
                     }}
                     className="text-xs text-red-400 hover:text-red-600 transition-colors px-2 py-1"
@@ -1381,7 +1607,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
               </div>
             </form>
           ) : mode === 'consumptions' ? (
-            <form onSubmit={handleConsumptionSubmit} className="space-y-4 max-w-xl">
+            <form onChange={() => setDirty(true)} onSubmit={handleConsumptionSubmit} className="space-y-4 max-w-xl">
               <h3 className="font-semibold text-sm">
                 {consumptionId ? `编辑: ${consumptionTitle}` : t.consumptionNew}
               </h3>
@@ -1528,13 +1754,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
 
               <label className="form-control">
                 <div className="label"><span className="label-text text-xs">{t.consumptionTags}</span></div>
-                <input
-                  type="text"
-                  className="input input-bordered input-sm"
-                  placeholder="科幻, 刘慈欣"
-                  value={consumptionTags}
-                  onInput={(e) => setConsumptionTags(e.currentTarget.value)}
-                />
+                <TagInput value={consumptionTags} onChange={setConsumptionTags} placeholder="回车或逗号添加标签" />
               </label>
 
               <div className="flex gap-2">
@@ -1550,78 +1770,78 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
             </form>
           ) : mode === 'profile' ? (
             /* ======== 档案编辑表单 ======== */
-            <form onSubmit={handleProfileSubmit} className="space-y-4 max-w-xl">
+            <form onChange={() => setDirty(true)} onSubmit={handleProfileSubmit} className="space-y-4 max-w-xl">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium mb-1">{t.profileName}</label>
+                  <label className="block text-sm font-medium mb-1">{t.profileName}</label>
                   <input
                     type="text"
                     value={profileForm.name}
                     onChange={(e) => setProfileForm((p) => ({ ...p, name: e.target.value }))}
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium mb-1">{t.profileTagline}</label>
+                  <label className="block text-sm font-medium mb-1">{t.profileTagline}</label>
                   <input
                     type="text"
                     value={profileForm.tagline}
                     onChange={(e) => setProfileForm((p) => ({ ...p, tagline: e.target.value }))}
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium mb-1">{t.profileAvatar}</label>
+                  <label className="block text-sm font-medium mb-1">{t.profileAvatar}</label>
                   <input
                     type="text"
                     value={profileForm.avatar}
                     onChange={(e) => setProfileForm((p) => ({ ...p, avatar: e.target.value }))}
                     placeholder="/images/avatar.jpg"
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium mb-1">{t.profileBirthDate}</label>
+                  <label className="block text-sm font-medium mb-1">{t.profileBirthDate}</label>
                   <input
                     type="date"
                     value={profileForm.birthDate}
                     onChange={(e) => setProfileForm((p) => ({ ...p, birthDate: e.target.value }))}
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium mb-1">{t.profileSkills}</label>
+                <label className="block text-sm font-medium mb-1">{t.profileSkills}</label>
                 <input
                   type="text"
                   value={profileForm.skills}
                   onChange={(e) => setProfileForm((p) => ({ ...p, skills: e.target.value }))}
                   placeholder={t.tagsPlaceholder}
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium mb-1">{t.profileShortGoal}</label>
+                <label className="block text-sm font-medium mb-1">{t.profileShortGoal}</label>
                 <input
                   type="text"
                   value={profileForm.shortGoal}
                   onChange={(e) => setProfileForm((p) => ({ ...p, shortGoal: e.target.value }))}
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium mb-1">{t.profileLongGoal}</label>
+                <label className="block text-sm font-medium mb-1">{t.profileLongGoal}</label>
                 <input
                   type="text"
                   value={profileForm.longGoal}
                   onChange={(e) => setProfileForm((p) => ({ ...p, longGoal: e.target.value }))}
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                 />
               </div>
 
@@ -1642,35 +1862,35 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
                 )}
               </div>
             </form>
-          ) : !selectedSlug && !form.title ? (
+          ) : !selectedSlug && !isNew ? (
             /* 空状态 */
             <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-500 text-sm">
               {t.noSelection}
             </div>
           ) : editTab === 'edit' ? (
             /* ======== 编辑表单 ======== */
-            <form onSubmit={handleSubmit} className="space-y-4 max-w-xl">
+            <form onChange={() => setDirty(true)} onSubmit={handleSubmit} className="space-y-4 max-w-xl">
               {/* 日期 & 标题 同行 */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium mb-1">{t.dateLabel}</label>
+                  <label className="block text-sm font-medium mb-1">{t.dateLabel}</label>
                   <input
                     type="date"
                     value={form.date}
                     onChange={(e) => update('date', e.target.value)}
                     className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900
-                               px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                               px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium mb-1">{t.titleLabel}</label>
+                  <label className="block text-sm font-medium mb-1">{t.titleLabel}</label>
                   <input
                     type="text"
                     value={form.title}
                     onChange={(e) => update('title', e.target.value)}
                     placeholder={t.titlePlaceholder}
                     className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900
-                               px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                               px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                   />
                 </div>
               </div>
@@ -1681,7 +1901,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
               {mode === 'events' && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium mb-1">{t.categoryLabel}</label>
+                    <label className="block text-sm font-medium mb-1">{t.categoryLabel}</label>
                     <div className="flex gap-1 flex-wrap">
                       {CATEGORIES.map((cat) => (
                         <button
@@ -1700,7 +1920,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium mb-1">{t.importanceLabel}: {form.importance}/5</label>
+                    <label className="block text-sm font-medium mb-1">{t.importanceLabel}: {form.importance}/5</label>
                     <input
                       type="range" min="1" max="5" value={form.importance}
                       onChange={(e) => update('importance', parseInt(e.target.value, 10))}
@@ -1718,25 +1938,19 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
               <div className={`grid ${mode === 'events' ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
                 {mode === 'events' && (
                   <div>
-                    <label className="block text-xs font-medium mb-1">{t.locationLabel}</label>
+                    <label className="block text-sm font-medium mb-1">{t.locationLabel}</label>
                     <input
                       type="text" value={form.location}
                       onChange={(e) => update('location', e.target.value)}
                       placeholder={t.locationPlaceholder}
                       className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900
-                                 px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                                 px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                     />
                   </div>
                 )}
                 <div>
-                  <label className="block text-xs font-medium mb-1">{t.tagsLabel}</label>
-                  <input
-                    type="text" value={form.tags}
-                    onChange={(e) => update('tags', e.target.value)}
-                    placeholder={t.tagsPlaceholder}
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900
-                               px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
-                  />
+                  <label className="block text-sm font-medium mb-1">{t.tagsLabel}</label>
+                  <TagInput value={form.tags} onChange={(v) => update('tags', v)} placeholder={t.tagsPlaceholder} />
                 </div>
               </div>
 
@@ -1753,33 +1967,25 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
 
               {/* 正文 */}
               <div>
-                <label className="block text-xs font-medium mb-1">{t.contentLabel}</label>
+                <label className="block text-sm font-medium mb-1">{t.contentLabel}</label>
 
-                {/* 插入媒体按钮 */}
-                <div className="flex items-center gap-2 mb-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowMediaPicker(true)}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700
-                               text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800
-                               transition-colors inline-flex items-center gap-1"
-                  >
-                    <span>🖼️</span>
-                    {t.insertMedia}
-                  </button>
-                  <span className="text-[10px] text-gray-400 dark:text-gray-500">{t.insertMediaHint}</span>
+                {/* 富文本工具栏 + 编辑区 */}
+                <div className="rounded-lg border border-gray-300 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900">
+                  <MarkdownToolbar
+                    onInsert={insertContent}
+                    onPickImage={() => setShowMediaPicker(true)}
+                    onUploadImage={handleToolbarUpload}
+                  />
+                  <textarea
+                    ref={textareaRef}
+                    value={form.content}
+                    onChange={(e) => update('content', e.target.value)}
+                    rows={14}
+                    placeholder={t.contentPlaceholder}
+                    className="w-full px-3 py-2 text-sm font-mono focus:outline-none resize-y bg-white dark:bg-gray-900"
+                  />
                 </div>
-
-                <textarea
-                  ref={textareaRef}
-                  value={form.content}
-                  onChange={(e) => update('content', e.target.value)}
-                  rows={10}
-                  placeholder={t.contentPlaceholder}
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900
-                             px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-green-500 focus:border-transparent
-                             outline-none resize-y"
-                />
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">{t.insertMediaHint}</p>
               </div>
 
               {/* 提交 */}
@@ -1841,6 +2047,7 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
           )}
         </div>
       </main>
+      </div>
 
       {/* ========== 删除确认弹窗 ========== */}
       {deleteTarget && (
@@ -1956,6 +2163,53 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
             <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-3 text-center">
               {t.insertMediaFooter}
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* ========== 统一 Toast ========== */}
+      {toast && (
+        <div
+          className={`fixed top-4 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-xl shadow-lg text-sm font-medium text-white ${
+            toast.type === 'success' ? 'bg-green-600' : 'bg-red-500'
+          }`}
+        >
+          {toast.text}
+        </div>
+      )}
+
+      {/* ========== 统一确认弹窗 ========== */}
+      {confirmState && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
+          onClick={() => setConfirmState(null)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-xl max-w-sm w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold mb-2">{confirmState.title}</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{confirmState.message}</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setConfirmState(null)}
+                className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                {t.cancelBtn}
+              </button>
+              <button
+                onClick={() => {
+                  const fn = confirmState.onConfirm;
+                  setConfirmState(null);
+                  fn();
+                }}
+                className={`px-4 py-2 text-sm rounded-lg text-white transition-colors ${
+                  confirmState.danger ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
+                }`}
+              >
+                {confirmState.confirmText || t.deleteBtn}
+              </button>
+            </div>
           </div>
         </div>
       )}
