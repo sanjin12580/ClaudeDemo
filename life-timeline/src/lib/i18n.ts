@@ -18,6 +18,7 @@ export const zh = {
     home: '人生时间线',
     timeline: '时间线',
     dashboard: '📊 总览',
+    bucketList: '🎯 愿望清单',
     blog: '博客',
     trending: 'GitHub热门',
     consumptions: '📚 清单',
@@ -31,6 +32,8 @@ export const zh = {
     summary: (start: number, end: number, count: number) =>
       `从 ${start} 年到 ${end} 年，共记录了 ${count} 个重要时刻。每个格子代表一周，颜色越深表示该周的事件越丰富。`,
     viewTimeline: '查看完整时间线 →',
+    bucketList: '人生清单',
+    viewBucketList: '查看愿望清单',
   },
   timeline: {
     heading: '📜 时间线',
@@ -214,10 +217,30 @@ export const zh = {
     douban: '豆瓣',
     tmdb: 'TMDB',
   },
+  /** 人生清单 */
+  bucketList: {
+    heading: '🎯 人生清单',
+    description: '想做的事、想去的远方、想成为的自己。',
+    progress: (p: number) => `完成度 ${p}%`,
+    total: (n: number) => `共 ${n} 项`,
+    doneSection: '✅ 已完成',
+    pendingSection: '🌱 待完成',
+    doneAt: (d: string) => `完成于 ${d}`,
+    empty: '清单还是空的，写下你的第一个愿望吧',
+    categories: {
+      旅行: '✈️ 旅行',
+      体验: '🎪 体验',
+      学习: '📚 学习',
+      健康: '💪 健康',
+      成就: '🏆 成就',
+      其他: '✨ 其他',
+    },
+  },
   lifeGrid: {
     less: '清淡',
     more: '丰富',
     tooltip: (year: number, week: number) => `${year} 年第 ${week} 周`,
+    close: '关闭',
   },
   eventCard: {
     importance: (v: number) => `重要性: ${v}/5`,
@@ -293,6 +316,7 @@ export const zh = {
     travel: '🗺️ 旅行',
     content: '📦 内容',
     goals: '🎯 目标',
+    bucketList: '人生清单',
     age: '年龄',
     daysLived: '已活天数',
     weeksLived: '已活周数',
@@ -353,7 +377,7 @@ export const zh = {
   },
   /** 目标看板 */
   goalBoard: {
-    heading: '🎯 目标看板',
+    heading: '🎯 当前目标',
     shortTitle: '短期目标',
     longTitle: '🚀 长期目标',
     empty: '还没有目标，去管理后台添加吧 →',

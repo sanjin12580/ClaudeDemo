@@ -36,6 +36,25 @@ const birthDate = profile?.birthDate ?? siteConfig.birthDate;
 
     <GoalBoard data={goalData} client:load />
 
+    <!-- 人生清单入口 -->
+    <a
+      href={to('/bucket-list')}
+      class="card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm p-4 flex items-center justify-between hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 group"
+    >
+      <div class="flex items-center gap-3">
+        <span class="text-xl">🎯</span>
+        <div>
+          <p class="text-sm font-semibold">{t.home.bucketList}</p>
+          <p class="text-xs text-gray-400 dark:text-gray-500">
+            {stats.bucketListCounts.done} / {stats.bucketListCounts.total}
+          </p>
+        </div>
+      </div>
+      <span class="text-sm text-green-600 dark:text-green-400 group-hover:translate-x-0.5 transition-transform shrink-0">
+        {t.home.viewBucketList} →
+      </span>
+    </a>
+
     <div class="card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm">
       <div class="card-body">
         <LifeGrid data={gridData} client:load />

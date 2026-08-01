@@ -23,6 +23,7 @@ export interface EventMeta {
   location?: string;
   draft: boolean;
   body: string;           // Markdown 正文（渲染前）
+  images: string[];       // 事件配图（public 下的路径，如 /images/events/xxx.jpg）
 }
 
 /** 贡献图中的一个格子 */
@@ -111,6 +112,35 @@ export interface Goal {
 export interface GoalBoardData {
   short: Goal[];
   long: Goal[];
+}
+
+/** 人生清单分类 */
+export type BucketCategory = '旅行' | '体验' | '学习' | '健康' | '成就' | '其他';
+
+/** 人生清单分类配色（daisyUI badge 类名） */
+export const BUCKET_CATEGORY_COLORS: Record<BucketCategory, string> = {
+  旅行: 'badge-success',
+  体验: 'badge-accent',
+  学习: 'badge-primary',
+  健康: 'badge-error',
+  成就: 'badge-warning',
+  其他: 'badge-ghost',
+};
+
+/** 人生清单条目 */
+export interface BucketListItem {
+  id: string;             // 唯一标识，如 "b-001"
+  title: string;          // 愿望标题
+  description: string;    // 备注
+  category: BucketCategory;
+  done: boolean;          // 是否已完成
+  doneDate?: string;      // 完成日期 "YYYY-MM-DD"
+  tags: string[];
+}
+
+/** 人生清单数据 */
+export interface BucketListData {
+  items: BucketListItem[];
 }
 
 /** 个人资料 */

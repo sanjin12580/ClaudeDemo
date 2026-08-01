@@ -16,6 +16,7 @@ const eventsCollection = defineCollection({
     tags: z.array(z.string()).default([]),
     importance: z.number().int().min(1).max(5).default(3),
     location: z.string().optional(),
+    images: z.array(z.string()).default([]),
     draft: z.boolean().default(false),
   }),
 });

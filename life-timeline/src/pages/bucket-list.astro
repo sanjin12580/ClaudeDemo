@@ -1,0 +1,139 @@
+---
+// ============================================================
+// /bucket-list — 人生清单（愿望清单）
+// ============================================================
+
+import Layout from '../layouts/Layout.astro';
+import { loadBucketList } from '../lib/parseBucketList';
+import { BUCKET_CATEGORY_COLORS } from '../lib/types';
+import { t } from '../lib/i18n';
+
+const data = await loadBucketList();
+const items = data.items;
+const doneItems = items
+  .filter((i) => i.done)
+  .sort((a, b) => (b.doneDate ?? '').localeCompare(a.doneDate ?? ''));
+const pendingItems = items.filter((i) => !i.done);
+const total = items.length;
+const progress = total ? Math.round((doneItems.length / total) * 100) : 0;
+
+const cardCls =
+  'card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 shadow-sm';
+
+const tagsCls = 'flex gap-1.5 flex-wrap mt-3';
+const tagCls = 'badge badge-sm badge-ghost text-gray-500 dark:text-gray-400';
+---
+
+<Layout title={t.bucketList.heading} description={t.bucketList.description}>
+  <div class="space-y-8">
+    <div>
+      <h1 class="text-3xl font-bold tracking-tight">{t.bucketList.heading}</h1>
+      <p class="mt-2 text-gray-500 dark:text-gray-400">{t.bucketList.description}</p>
+    </div>
+
+    <!-- 完成进度 -->
+    <div class={`${cardCls} p-6`}>
+      <div class="flex items-center justify-between text-sm mb-3">
+        <span class="font-semibold">{t.bucketList.total(total)}</span>
+        <span class="text-green-600 dark:text-green-400 font-medium">
+          {t.bucketList.progress(progress)}
+        </span>
+      </div>
+      <div class="w-full h-3 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+        <div
+          class="h-full rounded-full bg-gradient-to-r from-green-500 to-emerald-400 transition-all"
+          style={`width: ${progress}%`}
+        ></div>
+      </div>
+      <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
+        {t.bucketList.doneSection} {doneItems.length} / {total}
+      </p>
+    </div>
+
+    {items.length === 0 ? (
+      <div class="text-center py-20 text-gray-400 dark:text-gray-500">
+        <p class="text-5xl mb-4">📝</p>
+        <p class="text-sm">{t.bucketList.empty}</p>
+      </div>
+    ) : (
+      <>
+        <!-- 已完成 -->
+        {doneItems.length > 0 && (
+          <section>
+            <h2 class="text-xl font-bold tracking-tight mb-4">{t.bucketList.doneSection}</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {doneItems.map((item) => (
+                <div class={cardCls}>
+                  <div class="flex items-start gap-3">
+                    <span class="text-xl mt-0.5 shrink-0">✅</span>
+                    <div class="min-w-0 flex-1">
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <span class={`badge badge-sm font-medium ${BUCKET_CATEGORY_COLORS[item.category]}`}>
+                          {t.bucketList.categories[item.category]}
+                        </span>
+                        {item.doneDate && (
+                          <span class="text-xs text-gray-400 dark:text-gray-500">
+                            {t.bucketList.doneAt(item.doneDate)}
+                          </span>
+                        )}
+                      </div>
+                      <h3 class="text-base font-semibold mt-2">{item.title}</h3>
+                      {item.description && (
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                          {item.description}
+                        </p>
+                      )}
+                      {item.tags.length > 0 && (
+                        <div class={tagsCls}>
+                          {item.tags.map((tag) => (
+                            <span class={tagCls}>#{tag}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <!-- 待完成 -->
+        {pendingItems.length > 0 && (
+          <section>
+            <h2 class="text-xl font-bold tracking-tight mb-4">{t.bucketList.pendingSection}</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {pendingItems.map((item) => (
+                <div class={`${cardCls} hover:shadow-md hover:-translate-y-0.5 transition-all duration-300`}>
+                  <div class="flex items-start gap-3">
+                    <span class="text-xl mt-0.5 shrink-0">🌱</span>
+                    <div class="min-w-0 flex-1">
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <span class={`badge badge-sm font-medium ${BUCKET_CATEGORY_COLORS[item.category]}`}>
+                          {t.bucketList.categories[item.category]}
+                        </span>
+                      </div>
+                      <h3 class="text-base font-semibold mt-2">{item.title}</h3>
+                      {item.description && (
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                          {item.description}
+                        </p>
+                      )}
+                      {item.tags.length > 0 && (
+                        <div class={tagsCls}>
+                          {item.tags.map((tag) => (
+                            <span class={tagCls}>#{tag}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+      </>
+    )}
+  </div>
+</Layout>

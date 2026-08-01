@@ -17,6 +17,7 @@ export async function loadEvents(includeDrafts = false): Promise<EventMeta[]> {
       tags: entry.data.tags ?? [],
       importance: entry.data.importance ?? 3,
       location: entry.data.location,
+      images: entry.data.images ?? [],
       draft: entry.data.draft ?? false,
       body: entry.body ?? '',
     }))
