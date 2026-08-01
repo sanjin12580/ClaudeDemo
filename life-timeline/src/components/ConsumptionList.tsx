@@ -7,7 +7,7 @@ import { useState, useMemo } from 'react';
 import { CONSUMPTION_TYPES, renderStars } from '../lib/parseConsumptions';
 import type { ConsumptionItem } from '../lib/parseConsumptions';
 import { useI18n } from '../lib/i18n';
-import { to } from '../lib/base';
+import { to, coverUrl } from '../lib/base';
 
 interface Props {
   items: ConsumptionItem[];
@@ -51,7 +51,7 @@ export default function ConsumptionList({ items }: Props) {
   const cover = (item: ConsumptionItem) =>
     item.cover ? (
       <img
-        src={item.cover}
+        src={coverUrl(item.cover)}
         alt={item.title}
         loading="lazy"
         className="w-12 h-16 object-cover rounded shrink-0 bg-gray-100 dark:bg-gray-800"

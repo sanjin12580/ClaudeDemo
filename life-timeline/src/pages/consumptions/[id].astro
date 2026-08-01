@@ -8,7 +8,7 @@ import Layout from '../../layouts/Layout.astro';
 import { loadConsumptions, renderStars } from '../../lib/parseConsumptions';
 import { createMarkdownProcessor } from '@astrojs/markdown-remark';
 import { t } from '../../lib/i18n';
-import { to, formatDate } from '../../lib/base';
+import { to, formatDate, coverUrl } from '../../lib/base';
 
 export async function getStaticPaths() {
   const data = await loadConsumptions();
@@ -56,7 +56,7 @@ const sourceLabel =
         {
           item.cover ? (
             <img
-              src={item.cover}
+              src={coverUrl(item.cover)}
               alt={item.title}
               class="w-48 h-64 object-cover rounded-xl shadow-md bg-gray-100 dark:bg-gray-800"
             />

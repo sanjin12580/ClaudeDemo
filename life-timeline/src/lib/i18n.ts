@@ -168,6 +168,7 @@ export const zh = {
     consumptionSaved: (path: string) => `清单已保存: ${path}`,
     consumptionAutoFetch: '🪄 自动获取元数据',
     consumptionFetching: '获取中...',
+    consumptionSavingCover: '正在下载封面...',
     consumptionFetchFailed: '获取失败',
     consumptionCandidates: '选择匹配结果：',
     consumptionNoCandidates: '没有找到匹配结果，可手动填写',

@@ -490,16 +490,34 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
     }
   }
 
-  function applyMetadataCandidate(c: MetadataCandidate) {
+  async function applyMetadataCandidate(c: MetadataCandidate) {
+    setFetchingMeta(true);
+    setMetadataHint(t.consumptionSavingCover);
+    let cover = c.cover;
+    try {
+      // 下载到本地 public/covers/，避免豆瓣防盗链导致封面加载失败
+      const resp = await fetch('/api/save-cover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: c.cover }),
+      });
+      const json = await resp.json();
+      if (resp.ok && json.success && json.url) {
+        cover = json.url;
+      }
+    } catch {
+      // 下载失败时回退到远程 URL
+    }
     setConsumptionTitle(c.title);
     if (c.year) setConsumptionYear(String(c.year));
     if (c.author) setConsumptionAuthor(c.author);
-    setConsumptionCover(c.cover);
+    setConsumptionCover(cover);
     setConsumptionSource(c.source);
     setConsumptionSourceId(c.sourceId);
     setConsumptionSourceUrl(c.sourceUrl ?? '');
     setMetadataCandidates([]);
     setMetadataHint('');
+    setFetchingMeta(false);
   }
 
   // ========== 目标操作 ==========
@@ -1473,7 +1491,11 @@ export default function AdminPanel({ events: initialEvents, posts: initialPosts,
                         >
                           {
                             c.cover ? (
-                              <img src={c.cover} alt={c.title} className="w-8 h-11 object-cover rounded shrink-0" />
+                              <img
+                                src={`/api/img-proxy?url=${encodeURIComponent(c.cover)}`}
+                                alt={c.title}
+                                className="w-8 h-11 object-cover rounded shrink-0"
+                              />
                             ) : (
                               <div className="w-8 h-11 rounded bg-gray-100 dark:bg-gray-800 shrink-0" />
                             )
