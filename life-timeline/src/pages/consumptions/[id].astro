@@ -27,12 +27,7 @@ const processor = await createMarkdownProcessor();
 const { code: reviewHtml } = await processor.render(item.review || '');
 
 const typeLabel = t.admin.consumptionTypeOptions[item.type] ?? item.type;
-const statusLabel =
-  item.status === 'done'
-    ? t.consumptionsPage.done
-    : item.status === 'doing'
-      ? t.consumptionsPage.doing
-      : t.consumptionsPage.want;
+const statusLabel = item.status === 'done' ? t.consumptionsPage.done : t.consumptionsPage.doing;
 const sourceLabel =
   item.source === 'tmdb'
     ? t.consumptionDetail.tmdb

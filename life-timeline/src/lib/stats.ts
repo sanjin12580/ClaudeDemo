@@ -90,7 +90,7 @@ export interface LifeStats {
   // 内容
   postCount: number;
   mediaCount: number;
-  consumptionCounts: { done: number; doing: number; want: number };
+  consumptionCounts: { done: number; doing: number };
   // 目标
   goalCount: number;
   goalCompleted: number;
@@ -169,7 +169,7 @@ export async function loadLifeStats(): Promise<LifeStats> {
     .sort((a, b) => b.value - a.value);
 
   // ---------- 内容 ----------
-  const consumptionCounts = { done: 0, doing: 0, want: 0 } as Record<ConsumptionItem['status'], number>;
+  const consumptionCounts = { done: 0, doing: 0 } as Record<ConsumptionItem['status'], number>;
   for (const item of consumptions) consumptionCounts[item.status] += 1;
 
   // ---------- 目标 ----------

@@ -120,6 +120,66 @@
         "日本",
         "反战"
       ]
+    },
+    {
+      "id": "c-007",
+      "title": "琅琊榜",
+      "type": "tv",
+      "status": "done",
+      "rating": 5,
+      "review": "权谋剧的天花板。梅长苏的隐忍与智谋，配乐和服化道都在线，\"江左梅郎，麒麟之才\"名不虚传。",
+      "date": "2025-08",
+      "year": 2015,
+      "author": "孔笙 / 李雪",
+      "cover": "/covers/cover-douban-25754848.jpg",
+      "source": "douban",
+      "sourceId": "25754848",
+      "sourceUrl": "https://movie.douban.com/subject/25754848/",
+      "tags": [
+        "权谋",
+        "古装",
+        "中国"
+      ]
+    },
+    {
+      "id": "c-008",
+      "title": "乐队的夏天",
+      "type": "variety",
+      "status": "done",
+      "rating": 4,
+      "review": "国内音乐综艺的一股清流，让乐队文化走进了大众视野。新裤子、痛仰的表现都很惊艳。",
+      "date": "2025-09",
+      "year": 2019,
+      "author": "米未传媒",
+      "cover": "/covers/cover-douban-30357990.jpg",
+      "source": "douban",
+      "sourceId": "30357990",
+      "sourceUrl": "https://movie.douban.com/subject/30357990/",
+      "tags": [
+        "音乐",
+        "乐队",
+        "综艺"
+      ]
+    },
+    {
+      "id": "c-009",
+      "title": "七里香",
+      "type": "music",
+      "status": "doing",
+      "rating": 5,
+      "review": "杰伦的巅峰专辑之一。从《七里香》到《止战之殇》，每一首都是回忆杀，前奏一响青春就回来了。",
+      "date": "2025-10",
+      "year": 2004,
+      "author": "周杰伦",
+      "cover": "/covers/cover-douban-1401853.jpg",
+      "source": "douban",
+      "sourceId": "1401853",
+      "sourceUrl": "https://music.douban.com/subject/1401853/",
+      "tags": [
+        "华语",
+        "流行",
+        "周杰伦"
+      ]
     }
   ]
 }
