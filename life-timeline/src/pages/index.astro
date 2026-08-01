@@ -3,9 +3,11 @@ import Layout from '../layouts/Layout.astro';
 import LifeGrid from '../components/LifeGrid';
 import LifeCounter from '../components/LifeCounter';
 import GoalBoard from '../components/GoalBoard';
+import StatsStrip from '../components/StatsStrip.astro';
 import { loadEvents, buildGridData } from '../lib/parseEvents';
 import { loadProfile } from '../lib/parseProfile';
 import { loadGoals } from '../lib/parseGoals';
+import { loadLifeStats } from '../lib/stats';
 import { t } from '../lib/i18n';
 import { to } from '../lib/base';
 import { siteConfig } from '../site.config';
@@ -13,6 +15,7 @@ import { siteConfig } from '../site.config';
 const events = await loadEvents();
 const profile = await loadProfile();
 const goalData = await loadGoals();
+const stats = await loadLifeStats();
 const gridData = buildGridData(events, siteConfig.birthYear);
 const totalEvents = events.length;
 
@@ -28,6 +31,8 @@ const birthDate = profile?.birthDate ?? siteConfig.birthDate;
     </div>
 
     <LifeCounter birthDate={birthDate} client:load />
+
+    <StatsStrip stats={stats} />
 
     <GoalBoard data={goalData} client:load />
 
