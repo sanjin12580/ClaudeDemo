@@ -6,6 +6,7 @@ import { t } from '../../lib/i18n';
 import { to } from '../../lib/base';
 
 const posts = await loadPosts();
+const editable = import.meta.env.DEV;
 ---
 
 <Layout title={t.blog.title} description={t.blog.description}>
@@ -23,6 +24,6 @@ const posts = await loadPosts();
       </a>
     </div>
 
-    <BlogList posts={posts} client:load />
+    <BlogList posts={posts} editable={editable} client:load />
   </div>
 </Layout>

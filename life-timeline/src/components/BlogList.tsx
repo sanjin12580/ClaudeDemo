@@ -1,15 +1,22 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import type { PostMeta } from '../lib/types';
 import { groupPostsByYear, getAllTags } from '../lib/postUtils';
 import BlogCard from './BlogCard';
 import { useI18n } from '../lib/i18n';
 
+const EventPostEditDialog = lazy(() => import('./edit/EventPostEditDialog'));
+const DevToaster = lazy(() => import('./edit/DevToaster'));
+
 interface Props {
   posts: PostMeta[];
+  /** 仅开发环境：启用卡片原地编辑与新建 */
+  editable?: boolean;
 }
 
-export default function BlogList({ posts }: Props) {
-  const { blog: t } = useI18n();
+export default function BlogList({ posts, editable }: Props) {
+  const { blog: t, editMode: em } = useI18n();
+  const [editingPost, setEditingPost] = useState<PostMeta | null>(null);
+  const [creating, setCreating] = useState(false);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
   const tags = useMemo(() => getAllTags(posts), [posts]);
@@ -24,28 +31,39 @@ export default function BlogList({ posts }: Props) {
   return (
     <div className="space-y-8">
       {/* 标签筛选栏 */}
-      {tags.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setSelectedTag(null)}
-            className={`btn btn-sm text-xs transition-all duration-200
-              ${selectedTag === null ? 'btn-primary' : 'btn-ghost'}`}
-          >
-            {t.allTags}
-          </button>
-          {tags.map(({ tag, count }) => (
+      <div className="flex flex-wrap items-center gap-2">
+        {tags.length > 0 && (
+          <>
             <button
-              key={tag}
-              onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
+              onClick={() => setSelectedTag(null)}
               className={`btn btn-sm text-xs transition-all duration-200
-                ${selectedTag === tag ? 'btn-primary' : 'btn-ghost'}`}
+                ${selectedTag === null ? 'btn-primary' : 'btn-ghost'}`}
             >
-              #{tag}
-              <span className="ml-1 opacity-60">{count}</span>
+              {t.allTags}
             </button>
-          ))}
-        </div>
-      )}
+            {tags.map(({ tag, count }) => (
+              <button
+                key={tag}
+                onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
+                className={`btn btn-sm text-xs transition-all duration-200
+                  ${selectedTag === tag ? 'btn-primary' : 'btn-ghost'}`}
+              >
+                #{tag}
+                <span className="ml-1 opacity-60">{count}</span>
+              </button>
+            ))}
+          </>
+        )}
+        {editable && (
+          <button
+            type="button"
+            className="btn btn-primary btn-sm ml-auto"
+            onClick={() => setCreating(true)}
+          >
+            {em.newPost}
+          </button>
+        )}
+      </div>
 
       {/* 文章列表 */}
       {yearGroups.length > 0 ? (
@@ -56,7 +74,7 @@ export default function BlogList({ posts }: Props) {
             </h2>
             <div className="space-y-4">
               {group.posts.map((post) => (
-                <BlogCard key={post.slug} post={post} />
+                <BlogCard key={post.slug} post={post} editable={editable} onEdit={setEditingPost} />
               ))}
             </div>
           </section>
@@ -65,6 +83,25 @@ export default function BlogList({ posts }: Props) {
         <div className="text-center py-16 text-gray-400 dark:text-gray-500">
           <p className="text-lg">{t.empty}</p>
         </div>
+      )}
+      {editable && (editingPost || creating) && (
+        <Suspense fallback={null}>
+          <EventPostEditDialog
+            key={editingPost?.slug ?? 'new'}
+            mode="posts"
+            item={editingPost}
+            open
+            onClose={() => {
+              setEditingPost(null);
+              setCreating(false);
+            }}
+          />
+        </Suspense>
+      )}
+      {editable && (
+        <Suspense fallback={null}>
+          <DevToaster />
+        </Suspense>
       )}
     </div>
   );

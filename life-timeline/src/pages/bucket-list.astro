@@ -7,9 +7,11 @@ import Layout from '../layouts/Layout.astro';
 import { loadBucketList } from '../lib/parseBucketList';
 import { BUCKET_CATEGORY_COLORS } from '../lib/types';
 import { t } from '../lib/i18n';
+import BucketEditorHost from '../components/edit/BucketEditorHost';
 
 const data = await loadBucketList();
 const items = data.items;
+const editable = import.meta.env.DEV;
 const doneItems = items
   .filter((i) => i.done)
   .sort((a, b) => (b.doneDate ?? '').localeCompare(a.doneDate ?? ''));
@@ -18,7 +20,7 @@ const total = items.length;
 const progress = total ? Math.round((doneItems.length / total) * 100) : 0;
 
 const cardCls =
-  'card bg-base-100 border border-base-300 p-5 shadow-sm';
+  'card bg-base-100 border border-base-300 p-5 shadow-sm relative';
 
 const tagsCls = 'flex gap-1.5 flex-wrap mt-3';
 const tagCls = 'badge badge-sm badge-ghost text-gray-500 dark:text-gray-400';
@@ -50,6 +52,18 @@ const tagCls = 'badge badge-sm badge-ghost text-gray-500 dark:text-gray-400';
       </p>
     </div>
 
+    {
+      editable && (
+        <button
+          type="button"
+          data-bucket-new
+          class="btn btn-primary btn-sm rounded-full"
+        >
+          {t.editMode.newBucket}
+        </button>
+      )
+    }
+
     {items.length === 0 ? (
       <div class="text-center py-20 text-gray-400 dark:text-gray-500">
         <p class="text-5xl mb-4">📝</p>
@@ -64,6 +78,18 @@ const tagCls = 'badge badge-sm badge-ghost text-gray-500 dark:text-gray-400';
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               {doneItems.map((item) => (
                 <div class={cardCls}>
+                  {
+                    editable && (
+                      <button
+                        type="button"
+                        data-bucket-edit={item.id}
+                        class="inline-flex h-6 items-center gap-0.5 rounded-full border border-base-300 bg-base-100/85 px-2 text-xs shadow-sm backdrop-blur-sm absolute top-3 right-3 z-10"
+                        title={t.editMode.edit}
+                      >
+                        ✏️
+                      </button>
+                    )
+                  }
                   <div class="flex items-start gap-3">
                     <span class="text-xl mt-0.5 shrink-0">✅</span>
                     <div class="min-w-0 flex-1">
@@ -105,6 +131,18 @@ const tagCls = 'badge badge-sm badge-ghost text-gray-500 dark:text-gray-400';
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               {pendingItems.map((item) => (
                 <div class={`${cardCls} hover:shadow-md hover:-translate-y-0.5 transition-all duration-300`}>
+                  {
+                    editable && (
+                      <button
+                        type="button"
+                        data-bucket-edit={item.id}
+                        class="inline-flex h-6 items-center gap-0.5 rounded-full border border-base-300 bg-base-100/85 px-2 text-xs shadow-sm backdrop-blur-sm absolute top-3 right-3 z-10"
+                        title={t.editMode.edit}
+                      >
+                        ✏️
+                      </button>
+                    )
+                  }
                   <div class="flex items-start gap-3">
                     <span class="text-xl mt-0.5 shrink-0">🌱</span>
                     <div class="min-w-0 flex-1">
@@ -136,4 +174,10 @@ const tagCls = 'badge badge-sm badge-ghost text-gray-500 dark:text-gray-400';
       </>
     )}
   </div>
+
+  {
+    editable && (
+      <BucketEditorHost items={items} client:load />
+    )
+  }
 </Layout>

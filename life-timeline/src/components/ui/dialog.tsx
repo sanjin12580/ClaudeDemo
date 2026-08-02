@@ -30,24 +30,25 @@ interface DialogContentProps extends React.ComponentProps<typeof DialogPrimitive
   /** 挂载容器（默认 body；管理端传 admin 根节点以继承主题令牌） */
   container?: HTMLElement | null;
   showCloseButton?: boolean;
+  /** center: 居中弹窗；right: 右侧滑出抽屉 */
+  side?: 'center' | 'right';
 }
 
-function DialogContent({
-  className,
-  children,
-  container,
-  showCloseButton = true,
-  ...props
-}: DialogContentProps) {
+const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(function DialogContent(
+  { className, children, container, showCloseButton = true, side = 'center', ...props },
+  ref
+) {
+  const positionCls =
+    side === 'right'
+      ? 'fixed inset-y-0 right-0 z-50 flex h-full w-full max-w-2xl flex-col border-l bg-background shadow-xl'
+      : 'fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg border bg-background p-6 shadow-lg sm:max-w-lg';
   return (
     <DialogPortal container={container}>
       <DialogOverlay />
       <DialogPrimitive.Content
+        ref={ref}
         data-slot="dialog-content"
-        className={cn(
-          'fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg border bg-background p-6 shadow-lg sm:max-w-lg',
-          className
-        )}
+        className={cn(positionCls, className)}
         {...props}
       >
         {children}
@@ -63,7 +64,7 @@ function DialogContent({
       </DialogPrimitive.Content>
     </DialogPortal>
   );
-}
+});
 
 function DialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
   return <div data-slot="dialog-header" className={cn('flex flex-col gap-2 text-center sm:text-left', className)} {...props} />;

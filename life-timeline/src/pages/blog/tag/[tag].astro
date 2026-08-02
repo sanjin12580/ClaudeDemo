@@ -22,6 +22,7 @@ export async function getStaticPaths() {
 const { tag } = Astro.params;
 const allPosts = await loadPosts();
 const filteredPosts = filterPostsByTag(allPosts, tag!);
+const editable = import.meta.env.DEV;
 ---
 
 <Layout title={`#${tag} — ${t.blog.title}`} description={`${t.blog.tagged} #${tag}`}>
@@ -44,6 +45,6 @@ const filteredPosts = filterPostsByTag(allPosts, tag!);
       </p>
     </div>
 
-    <BlogList posts={filteredPosts} client:load />
+    <BlogList posts={filteredPosts} editable={editable} client:load />
   </div>
 </Layout>

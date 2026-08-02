@@ -9,6 +9,7 @@ import { loadConsumptions } from '../../lib/parseConsumptions';
 import { t } from '../../lib/i18n';
 
 const data = await loadConsumptions();
+const editable = import.meta.env.DEV;
 ---
 
 <Layout
@@ -22,5 +23,5 @@ const data = await loadConsumptions();
     {t.consumptionsPage.description}
   </p>
 
-  <ConsumptionList items={data.items} client:load />
+  <ConsumptionList items={data.items} editable={editable} client:load />
 </Layout>

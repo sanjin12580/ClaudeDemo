@@ -1,5 +1,13 @@
 import type { PostMeta } from '../lib/types';
 import { to, formatDate, CARD_CLASSES } from '../lib/base';
+import { useI18n } from '../lib/i18n';
+import EditButton from './edit/EditButton';
+
+interface Props {
+  post: PostMeta;
+  editable?: boolean;
+  onEdit?: (post: PostMeta) => void;
+}
 
 interface Props {
   post: PostMeta;
@@ -18,38 +26,48 @@ function getExcerpt(body: string, maxLen = 150): string {
   return plain.length > maxLen ? plain.slice(0, maxLen) + '…' : plain;
 }
 
-export default function BlogCard({ post }: Props) {
+export default function BlogCard({ post, editable, onEdit }: Props) {
+  const { editMode: em } = useI18n();
   return (
-    <a
-      href={to(`/blog/${post.slug}`)}
-      className={CARD_CLASSES}
-    >
-      <time className="text-sm text-gray-500 dark:text-gray-400 font-mono tabular-nums">
-        {formatDate(post.date)}
-      </time>
+    <div className="relative">
+      <a
+        href={to(`/blog/${post.slug}`)}
+        className={CARD_CLASSES}
+      >
+        <time className="text-sm text-gray-500 dark:text-gray-400 font-mono tabular-nums">
+          {formatDate(post.date)}
+        </time>
 
-      <h3 className="text-lg font-semibold mt-2 mb-2 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">
-        {post.title}
-      </h3>
+        <h3 className="text-lg font-semibold mt-2 mb-2 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">
+          {post.title}
+        </h3>
 
-      {post.body && (
-        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed line-clamp-3">
-          {getExcerpt(post.body)}
-        </p>
+        {post.body && (
+          <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed line-clamp-3">
+            {getExcerpt(post.body)}
+          </p>
+        )}
+
+        {post.tags.length > 0 && (
+          <div className="flex gap-1.5 mt-3 flex-wrap">
+            {post.tags.map((tag) => (
+              <span
+                key={tag}
+                className="badge badge-sm badge-ghost text-gray-500 dark:text-gray-400"
+              >
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </a>
+      {editable && onEdit && (
+        <EditButton
+          onClick={() => onEdit(post)}
+          title={em.edit}
+          className="absolute top-3 right-3 z-10"
+        />
       )}
-
-      {post.tags.length > 0 && (
-        <div className="flex gap-1.5 mt-3 flex-wrap">
-          {post.tags.map((tag) => (
-            <span
-              key={tag}
-              className="badge badge-sm badge-ghost text-gray-500 dark:text-gray-400"
-            >
-              #{tag}
-            </span>
-          ))}
-        </div>
-      )}
-    </a>
+    </div>
   );
 }
