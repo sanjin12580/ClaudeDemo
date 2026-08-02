@@ -2,9 +2,13 @@ import type { EventMeta } from '../lib/types';
 import { CATEGORY_COLORS } from '../lib/types';
 import { useI18n } from '../lib/i18n';
 import { to, formatDate, CARD_CLASSES } from '../lib/base';
+import EditButton from './edit/EditButton';
 
 interface Props {
   event: EventMeta;
+  /** 仅开发环境：显示编辑按钮 */
+  editable?: boolean;
+  onEdit?: (event: EventMeta) => void;
 }
 
 function StarRating({ value }: { value: number }) {
@@ -20,67 +24,77 @@ function StarRating({ value }: { value: number }) {
   );
 }
 
-export default function EventCard({ event }: Props) {
+export default function EventCard({ event, editable, onEdit }: Props) {
+  const { editMode: em } = useI18n();
   const catColor = CATEGORY_COLORS[event.category] || CATEGORY_COLORS['其他'];
 
   return (
-    <a
-      href={to(`/events/${event.slug}`)}
-      className={CARD_CLASSES}
-    >
-      {/* 配图缩略图 */}
-      {event.images.length > 0 && (
-        <img
-          src={to(event.images[0])}
-          alt={event.title}
-          loading="lazy"
-          className="w-full h-40 object-cover rounded-lg mb-4"
+    <div className="relative">
+      <a
+        href={to(`/events/${event.slug}`)}
+        className={CARD_CLASSES}
+      >
+        {/* 配图缩略图 */}
+        {event.images.length > 0 && (
+          <img
+            src={to(event.images[0])}
+            alt={event.title}
+            loading="lazy"
+            className="w-full h-40 object-cover rounded-lg mb-4"
+          />
+        )}
+
+        {/* 头部：分类 + 日期 + 星级 */}
+        <div className="flex items-center gap-3 mb-3 flex-wrap">
+          <span className={`badge badge-sm font-medium ${catColor}`}>
+            {event.category}
+          </span>
+          <time className="text-sm text-gray-500 dark:text-gray-400 font-mono tabular-nums">
+            {formatDate(event.date)}
+          </time>
+          {event.location && (
+            <span className="text-sm text-gray-400 dark:text-gray-500">
+              📍 {event.location}
+            </span>
+          )}
+          <div className="ml-auto">
+            <StarRating value={event.importance} />
+          </div>
+        </div>
+
+        {/* 标题 */}
+        <h3 className="text-lg font-semibold mb-2 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">
+          {event.title}
+        </h3>
+
+        {/* 摘要 */}
+        {event.body && (
+          <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed line-clamp-3">
+            {event.body.replace(/[#*`>![\]()]/g, '').slice(0, 200)}
+          </p>
+        )}
+
+        {/* 标签 */}
+        {event.tags.length > 0 && (
+          <div className="flex gap-1.5 mt-3 flex-wrap">
+            {event.tags.map((tag) => (
+              <span
+                key={tag}
+                className="badge badge-sm badge-ghost text-gray-500 dark:text-gray-400"
+              >
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </a>
+      {editable && onEdit && (
+        <EditButton
+          onClick={() => onEdit(event)}
+          title={em.edit}
+          className="absolute top-3 right-3 z-10"
         />
       )}
-
-      {/* 头部：分类 + 日期 + 星级 */}
-      <div className="flex items-center gap-3 mb-3 flex-wrap">
-        <span className={`badge badge-sm font-medium ${catColor}`}>
-          {event.category}
-        </span>
-        <time className="text-sm text-gray-500 dark:text-gray-400 font-mono tabular-nums">
-          {formatDate(event.date)}
-        </time>
-        {event.location && (
-          <span className="text-sm text-gray-400 dark:text-gray-500">
-            📍 {event.location}
-          </span>
-        )}
-        <div className="ml-auto">
-          <StarRating value={event.importance} />
-        </div>
-      </div>
-
-      {/* 标题 */}
-      <h3 className="text-lg font-semibold mb-2 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">
-        {event.title}
-      </h3>
-
-      {/* 摘要 */}
-      {event.body && (
-        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed line-clamp-3">
-          {event.body.replace(/[#*`>![\]()]/g, '').slice(0, 200)}
-        </p>
-      )}
-
-      {/* 标签 */}
-      {event.tags.length > 0 && (
-        <div className="flex gap-1.5 mt-3 flex-wrap">
-          {event.tags.map((tag) => (
-            <span
-              key={tag}
-              className="badge badge-sm badge-ghost text-gray-500 dark:text-gray-400"
-            >
-              #{tag}
-            </span>
-          ))}
-        </div>
-      )}
-    </a>
+    </div>
   );
 }

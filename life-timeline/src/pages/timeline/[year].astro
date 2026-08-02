@@ -1,9 +1,13 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import EventCard from '../../components/EventCard';
+import EventCardWithEdit from '../../components/edit/EventCardWithEdit';
+import DevToaster from '../../components/edit/DevToaster';
 import { loadEvents } from '../../lib/parseEvents';
 import { t } from '../../lib/i18n';
 import { to } from '../../lib/base';
+
+const editable = import.meta.env.DEV;
 
 export async function getStaticPaths() {
   const events = await loadEvents();
@@ -67,7 +71,13 @@ for (const event of yearEvents) {
                       <div class="relative">
                         <div class="absolute -left-[calc(1.5rem+5px)] top-5 w-2.5 h-2.5
                                     rounded-full bg-green-600 dark:bg-green-500 ring-2 ring-base-100" />
-                        <EventCard event={event} client:load />
+                        {
+                          editable ? (
+                            <EventCardWithEdit event={event} editable client:load />
+                          ) : (
+                            <EventCard event={event} client:load />
+                          )
+                        }
                       </div>
                     ))}
                   </div>
@@ -79,4 +89,9 @@ for (const event of yearEvents) {
       )
     }
   </div>
+  {
+    editable && (
+      <DevToaster client:load />
+    )
+  }
 </Layout>

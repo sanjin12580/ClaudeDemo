@@ -18,6 +18,10 @@ interface Props {
   metadataHint: string;
   fetchingMeta: boolean;
   t: typeof zh['admin'];
+  /** Select 弹层挂载容器（公共页抽屉需传，admin 默认 body） */
+  container?: HTMLElement | null;
+  /** 是否显示「自动获取元数据」（公共页关闭） */
+  showMetaFetch?: boolean;
   onField: <K extends keyof ConsumptionFormShape>(field: K, value: ConsumptionFormShape[K]) => void;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   onDelete: () => void;
@@ -31,6 +35,8 @@ export default function ConsumptionEditor({
   metadataHint,
   fetchingMeta,
   t,
+  container,
+  showMetaFetch = true,
   onField,
   onSubmit,
   onDelete,
@@ -93,7 +99,7 @@ export default function ConsumptionEditor({
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent container={container}>
                 {Object.entries(t.consumptionTypeOptions).map(([k, v]) => (
                   <SelectItem key={k} value={k}>
                     {v}
@@ -108,7 +114,7 @@ export default function ConsumptionEditor({
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent container={container}>
                 {Object.entries(t.consumptionStatusOptions).map(([k, v]) => (
                   <SelectItem key={k} value={k}>
                     {v}
@@ -123,7 +129,7 @@ export default function ConsumptionEditor({
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent container={container}>
                 {[1, 2, 3, 4, 5].map((n) => (
                   <SelectItem key={n} value={String(n)}>
                     {'⭐'.repeat(n)}
@@ -137,9 +143,11 @@ export default function ConsumptionEditor({
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <Label>{t.consumptionCover}</Label>
-            <Button type="button" variant="outline" size="sm" onClick={onFetchMetadata} disabled={fetchingMeta}>
-              {fetchingMeta ? t.consumptionFetching : t.consumptionAutoFetch}
-            </Button>
+            {showMetaFetch && (
+              <Button type="button" variant="outline" size="sm" onClick={onFetchMetadata} disabled={fetchingMeta}>
+                {fetchingMeta ? t.consumptionFetching : t.consumptionAutoFetch}
+              </Button>
+            )}
           </div>
           <Input
             type="text"
@@ -147,7 +155,7 @@ export default function ConsumptionEditor({
             value={form.cover}
             onInput={(e) => onField('cover', e.currentTarget.value)}
           />
-          {metadataCandidates.length > 0 && (
+          {showMetaFetch && metadataCandidates.length > 0 && (
             <div className="mt-2 space-y-1.5">
               <div className="text-[11px] text-muted-foreground">{t.consumptionCandidates}</div>
               {metadataCandidates.map((c, idx) => (
@@ -176,7 +184,9 @@ export default function ConsumptionEditor({
               ))}
             </div>
           )}
-          {metadataHint && <p className="mt-1.5 text-[11px] text-muted-foreground">{metadataHint}</p>}
+          {showMetaFetch && metadataHint && (
+            <p className="mt-1.5 text-[11px] text-muted-foreground">{metadataHint}</p>
+          )}
         </div>
 
         <div className="space-y-1.5">

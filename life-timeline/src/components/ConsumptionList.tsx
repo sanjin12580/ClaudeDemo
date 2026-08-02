@@ -3,14 +3,20 @@
 // 封面海报墙：类型 Tab + 状态筛选（全部/在看/看过）+ 搜索
 // ============================================================
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import { CONSUMPTION_TYPES, renderStars } from '../lib/parseConsumptions';
 import type { ConsumptionItem } from '../lib/parseConsumptions';
 import { useI18n } from '../lib/i18n';
 import { to, coverUrl } from '../lib/base';
+import EditButton from './edit/EditButton';
+
+const ConsumptionEditDialog = lazy(() => import('./edit/ConsumptionEditDialog'));
+const DevToaster = lazy(() => import('./edit/DevToaster'));
 
 interface Props {
   items: ConsumptionItem[];
+  /** 仅开发环境：启用卡片原地编辑与新建 */
+  editable?: boolean;
 }
 
 type StatusFilter = 'all' | ConsumptionItem['status'];
@@ -21,8 +27,10 @@ const STATUS_BADGE: Record<ConsumptionItem['status'], string> = {
   done: 'bg-green-600/90',
 };
 
-export default function ConsumptionList({ items }: Props) {
-  const { consumptionsPage: t, admin: adminT } = useI18n();
+export default function ConsumptionList({ items, editable }: Props) {
+  const { consumptionsPage: t, admin: adminT, editMode: em } = useI18n();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,49 +80,59 @@ export default function ConsumptionList({ items }: Props) {
   };
 
   const card = (item: ConsumptionItem) => (
-    <a key={item.id} href={to(`/consumptions/${item.id}`)} className="group block">
-      {/* 封面 */}
-      <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 shadow-sm group-hover:shadow-md transition-shadow">
-        {item.cover ? (
-          <img
-            src={coverUrl(item.cover)}
-            alt={item.title}
-            loading="lazy"
-            className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-300"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-4xl">
-            {typeEmoji(item.type)}
-          </div>
-        )}
-        {/* 状态徽标 */}
-        <span
-          className={`absolute top-2 right-2 text-[10px] font-medium text-white rounded-full px-2 py-0.5 backdrop-blur-sm ${STATUS_BADGE[item.status]}`}
-        >
-          {statusLabel[item.status]}
-        </span>
-        {/* hover 浮现短评 */}
-        {item.review && (
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
-            <p className="text-[11px] text-white leading-relaxed line-clamp-3">
-              {reviewPreview(item.review)}
-            </p>
-          </div>
-        )}
-      </div>
-      {/* 标题与元信息 */}
-      <div className="mt-2 px-0.5">
-        <h3 className="text-sm font-semibold truncate group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">
-          {item.title}
-        </h3>
-        {metaLine(item) && (
-          <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 truncate">
-            {metaLine(item)}
-          </div>
-        )}
-        <div className="text-[11px] text-amber-500 mt-0.5 tracking-tight">{renderStars(item.rating)}</div>
-      </div>
-    </a>
+    <div key={item.id} className="relative group">
+      <a href={to(`/consumptions/${item.id}`)} className="group block">
+        {/* 封面 */}
+        <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 shadow-sm group-hover:shadow-md transition-shadow">
+          {item.cover ? (
+            <img
+              src={coverUrl(item.cover)}
+              alt={item.title}
+              loading="lazy"
+              className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-300"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-4xl">
+              {typeEmoji(item.type)}
+            </div>
+          )}
+          {/* 状态徽标 */}
+          <span
+            className={`absolute top-2 right-2 text-[10px] font-medium text-white rounded-full px-2 py-0.5 backdrop-blur-sm ${STATUS_BADGE[item.status]}`}
+          >
+            {statusLabel[item.status]}
+          </span>
+          {/* hover 浮现短评 */}
+          {item.review && (
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
+              <p className="text-[11px] text-white leading-relaxed line-clamp-3">
+                {reviewPreview(item.review)}
+              </p>
+            </div>
+          )}
+        </div>
+        {/* 标题与元信息 */}
+        <div className="mt-2 px-0.5">
+          <h3 className="text-sm font-semibold truncate group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">
+            {item.title}
+          </h3>
+          {metaLine(item) && (
+            <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 truncate">
+              {metaLine(item)}
+            </div>
+          )}
+          <div className="text-[11px] text-amber-500 mt-0.5 tracking-tight">{renderStars(item.rating)}</div>
+        </div>
+      </a>
+      {editable && (
+        <EditButton
+          onClick={() => setEditingId(item.id)}
+          title={em.edit}
+          tone="dark"
+          className="absolute top-2 left-2 z-10"
+        />
+      )}
+    </div>
   );
 
   const emptyBlock = (
@@ -130,14 +148,14 @@ export default function ConsumptionList({ items }: Props) {
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <div className="relative flex-1 min-w-[200px]">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none">🔍</span>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t.search}
-            className="input input-bordered input-sm w-full rounded-full pl-9 pr-4 text-xs bg-base-100"
-          />
-        </div>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder={t.search}
+          className="input input-bordered input-sm w-full rounded-full pl-9 pr-4 text-xs bg-base-100"
+        />
+      </div>
         {/* 状态分段筛选 */}
         <div className="join">
           {(['all', 'doing', 'done'] as StatusFilter[]).map((status) => {
@@ -160,8 +178,9 @@ export default function ConsumptionList({ items }: Props) {
         </div>
       </div>
 
-      {/* 类型筛选 Tab */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1 mb-5 -mx-1 px-1 scrollbar-thin">
+      {/* 类型筛选 Tab + 新建（开发环境） */}
+      <div className="flex items-center gap-2 mb-5 -mx-1 px-1">
+        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin flex-1 min-w-0">
         <button
           className={`btn btn-sm rounded-full shrink-0 ${
             typeFilter === 'all' ? 'btn-primary' : 'btn-outline bg-base-100'
@@ -196,8 +215,18 @@ export default function ConsumptionList({ items }: Props) {
                 {typeCounts[tp.key] ?? 0}
               </span>
             </button>
-          );
-        })}
+            );
+          })}
+        </div>
+        {editable && (
+          <button
+            type="button"
+            className="btn btn-sm rounded-full btn-primary shrink-0"
+            onClick={() => setCreating(true)}
+          >
+            {em.newConsumption}
+          </button>
+        )}
       </div>
 
       {/* 海报墙网格 */}
@@ -207,6 +236,25 @@ export default function ConsumptionList({ items }: Props) {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-5">
           {filtered.map(card)}
         </div>
+      )}
+      {editable && (editingId || creating) && (
+        <Suspense fallback={null}>
+          <ConsumptionEditDialog
+            key={editingId ?? 'new'}
+            items={items}
+            itemId={editingId}
+            open
+            onClose={() => {
+              setEditingId(null);
+              setCreating(false);
+            }}
+          />
+        </Suspense>
+      )}
+      {editable && (
+        <Suspense fallback={null}>
+          <DevToaster />
+        </Suspense>
       )}
     </div>
   );

@@ -1,6 +1,6 @@
 # 人生时间线 — 开发日志
 
-> 最后更新：2026-08-02 (v1.6.0)
+> 最后更新：2026-08-02 (v1.7.0)
 
 ---
 
@@ -183,6 +183,17 @@ life-timeline/
 ---
 
 ## 变更记录
+
+### 2026-08-02 — v1.7.0 (开发环境原地编辑模式)
+
+- **feat**: dev 环境下公共页面可直接新增 / 编辑 / 删除 — 时间线（`/timeline` 新建+编辑、`/timeline/[year]` 编辑）、博客（`/blog` 与 `/blog/tag/[tag]` 新建+编辑）、读书观影（`/consumptions` 新建+编辑）、愿望清单（`/bucket-list` 新建+编辑+删除）
+- **feat**: 新增 `src/components/edit/` — `EditDrawer`（右侧滑出抽屉，admin-root 令牌作用域 + 单 Toaster）、`EditButton`、`EventPostEditDialog` / `ConsumptionEditDialog`（直接复用 admin 编辑器组件）、`BucketItemEditor` / `BucketEditorHost`、`DevToaster`、`EventCardWithEdit`
+- **feat**: `ui/dialog` 支持 `side="right"` 与 ref 转发；`ConsumptionEditor` 新增 `container`（Select 弹层挂载）与 `showMetaFetch`（公共页关闭元数据拉取）props，admin 默认行为不变
+- **feat**: 新增 `src/lib/editActions.ts` 共享 API 调用；`vite-plugin-admin-api` 新增 `POST /api/write-bucket-list`
+- **fix**: 恢复 `/api/write-goals` 端点（v0.7.0 重构时被误删，管理端目标保存一直是 404）
+- **perf**: 编辑抽屉与 Toaster 全部懒加载，生产构建不加载任何编辑相关 JS
+- **style**: 编辑 UI 按各页面视觉语言适配 — 新建按钮改为圆角胶囊并固定于类型 Tab 行尾（清单页不再与搜索/状态筛选挤压），卡片 ✏️ 改为浅色/深色半透明小胶囊（海报封面用深色）
+- **chore**: 版本号 1.7.0
 
 ### 2026-08-02 — v1.6.0 (首页叙事化改版 · 方案 B)
 
@@ -547,3 +558,28 @@ life-timeline/
 - 现象：当前示例事件最晚为 2025-05，超出「最近 52 周」窗口，细条大部分为空
 - 解决：这是数据问题而非 bug——窗口内无事件就是空格；后续新增事件会自动点亮，必要时可调整 `DensityBand` 的窗口周数
 - 教训：时间窗口类可视化要明确「窗口外数据不显示」，避免被误认为渲染故障
+
+### 2026-08-02 — 开发环境原地编辑模式（v1.7.0）
+
+**1. 生产构建必须零残留，编辑代码要懒加载**
+
+- 现象：直接把编辑弹窗组件静态 import 进 Timeline/BlogList/ConsumptionList 后，生产构建会把编辑代码打进已加载的客户端 chunk
+- 解决：编辑抽屉与 Toaster 统一用 `React.lazy` 动态导入（`editable=false` 时永不执行 import()），页面级 Astro 组件用 `import.meta.env.DEV` 构建期条件渲染，生产 HTML 与 JS 均无编辑 UI
+- 验证：构建后 `rg` dist HTML 无「✏️」「＋ 新建」「data-bucket-*」；确认无编辑 chunk 被页面引用
+
+**2. 公共页复用 shadcn 编辑器需要令牌作用域与 Portal 容器**
+
+- 现象：admin 编辑器组件依赖 `.admin-root` 的 CSS 变量，直接放进公共页抽屉会失去样式；Select 弹层默认 portal 到 body 同样丢令牌
+- 解决：抽屉内容根节点加 `admin-root` class；`ui/dialog` 支持 ref 转发，抽屉把内容节点回传给 `ConsumptionEditor` / `BucketItemEditor` 的 `container` prop
+- 教训：作用域化 CSS 变量的组件，复用到新宿主时要把「变量作用域」和「Portal 挂载点」一起带过去
+
+**3. 每卡一个弹窗会重复挂载 Toaster**
+
+- 现象：愿望清单若每张卡片单独渲染编辑器岛，会同时挂载多个 sonner Toaster，toast 重复显示
+- 解决：卡片只派发 `bucket-edit` / `bucket-new` CustomEvent（`is:inline` 脚本，`import.meta.env.DEV` 守卫），页面级单例 `BucketEditorHost` 监听事件并维护唯一抽屉与 Toaster
+
+**4. `/api/write-goals` 端点被 v0.7.0 误删**
+
+- 现象：管理端目标保存一直 404（toast 报错），`git log -S "write-goals"` 显示端点随 v0.7.0 kkFileView 重构消失
+- 解决：按 `write-consumptions` 模式恢复端点（全量写回 `src/data/goals.json`），并顺带新增 `/api/write-bucket-list`
+- 教训：重构时用 `rg` 全仓核对前端仍在调用的 API 路径，避免静默断链

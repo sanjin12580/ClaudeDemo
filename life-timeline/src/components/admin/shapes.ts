@@ -113,3 +113,21 @@ export function emptyConsumptionForm(): ConsumptionFormShape {
     sourceUrl: '',
   };
 }
+
+export interface BucketFormShape {
+  title: string;
+  description: string;
+  category: string;
+  done: boolean;
+  doneDate: string;
+  tags: string;
+}
+
+export const EMPTY_BUCKET_FORM: BucketFormShape = {
+  title: '',
+  description: '',
+  category: '旅行',
+  done: false,
+  doneDate: '',
+  tags: '',
+};

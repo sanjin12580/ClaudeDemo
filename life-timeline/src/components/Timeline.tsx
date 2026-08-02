@@ -1,15 +1,23 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import type { EventMeta, YearGroup } from '../lib/types';
 import { useI18n } from '../lib/i18n';
 import EventCard from './EventCard';
 import SearchBar from './SearchBar';
 
+/** 懒加载：仅开发环境（editable）才拉取编辑抽屉代码 */
+const EventPostEditDialog = lazy(() => import('./edit/EventPostEditDialog'));
+const DevToaster = lazy(() => import('./edit/DevToaster'));
+
 interface Props {
   events: EventMeta[];
+  /** 仅开发环境：启用卡片原地编辑与新建 */
+  editable?: boolean;
 }
 
-export default function Timeline({ events }: Props) {
-  const { timeline: t, categories: catT } = useI18n();
+export default function Timeline({ events, editable }: Props) {
+  const { timeline: t, categories: catT, editMode: em } = useI18n();
+  const [editingEvent, setEditingEvent] = useState<EventMeta | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const allCats: Array<string> = [catT.all, ...Object.keys(catT).filter(k => k !== 'all')];
   const [selectedCategory, setSelectedCategory] = useState<string>(catT.all);
@@ -107,6 +115,15 @@ export default function Timeline({ events }: Props) {
             })}
           </div>
         )}
+        {editable && (
+          <button
+            type="button"
+            className="btn btn-primary btn-sm ml-auto"
+            onClick={() => setCreating(true)}
+          >
+            {em.newEvent}
+          </button>
+        )}
       </div>
 
       {/* 统计 */}
@@ -136,13 +153,32 @@ export default function Timeline({ events }: Props) {
                   <div key={event.slug} className="relative">
                     {/* 时间轴圆点 */}
                     <div className="absolute -left-[calc(0.5rem+5px)] top-6 w-3 h-3 rounded-full bg-green-600 dark:bg-green-500 ring-2 ring-base-100" />
-                    <EventCard event={event} />
+                    <EventCard event={event} editable={editable} onEdit={setEditingEvent} />
                   </div>
                 ))}
               </div>
             </section>
           ))}
         </div>
+      )}
+      {editable && (editingEvent || creating) && (
+        <Suspense fallback={null}>
+          <EventPostEditDialog
+            key={editingEvent?.slug ?? 'new'}
+            mode="events"
+            item={editingEvent}
+            open
+            onClose={() => {
+              setEditingEvent(null);
+              setCreating(false);
+            }}
+          />
+        </Suspense>
+      )}
+      {editable && (
+        <Suspense fallback={null}>
+          <DevToaster />
+        </Suspense>
       )}
     </div>
   );

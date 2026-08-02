@@ -70,6 +70,7 @@ function isPathWithin(baseDir: string, targetPath: string): boolean {
  * - POST /api/write-post  创建博客文章
  * - DELETE /api/delete-post 删除博客文章
  * - POST /api/write-goals 保存目标
+ * - POST /api/write-bucket-list 保存人生清单（愿望清单）
  * - POST /api/upload-file 上传文件
  * - POST /api/write-media 保存媒体元数据
  * - DELETE /api/delete-media 删除媒体文件
@@ -659,6 +660,94 @@ longGoal: "${escapeYaml(longGoal || '')}"
             }
 
             const filePath = path.join(dataDir, 'consumptions.json');
+            fs.writeFileSync(filePath, JSON.stringify({ items }, null, 2), 'utf-8');
+
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+              success: true,
+              path: path.relative(process.cwd(), filePath),
+            }));
+          } catch (err) {
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+              error: '保存失败',
+              detail: err instanceof Error ? err.message : String(err),
+            }));
+          }
+        });
+      });
+
+      // === 保存目标 ===
+      server.middlewares.use('/api/write-goals', (req, res) => {
+        if (req.method !== 'POST') {
+          res.statusCode = 405;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: '仅支持 POST 方法' }));
+          return;
+        }
+
+        readBody(req).then((body) => {
+          try {
+            const { goals } = JSON.parse(body);
+
+            if (!Array.isArray(goals)) {
+              res.statusCode = 400;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: '缺少 goals 数组' }));
+              return;
+            }
+
+            const dataDir = path.resolve(process.cwd(), 'src', 'data');
+            if (!fs.existsSync(dataDir)) {
+              fs.mkdirSync(dataDir, { recursive: true });
+            }
+
+            const filePath = path.join(dataDir, 'goals.json');
+            fs.writeFileSync(filePath, JSON.stringify({ goals }, null, 2), 'utf-8');
+
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+              success: true,
+              path: path.relative(process.cwd(), filePath),
+            }));
+          } catch (err) {
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+              error: '保存失败',
+              detail: err instanceof Error ? err.message : String(err),
+            }));
+          }
+        });
+      });
+
+      // === 保存人生清单（愿望清单） ===
+      server.middlewares.use('/api/write-bucket-list', (req, res) => {
+        if (req.method !== 'POST') {
+          res.statusCode = 405;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: '仅支持 POST 方法' }));
+          return;
+        }
+
+        readBody(req).then((body) => {
+          try {
+            const { items } = JSON.parse(body);
+
+            if (!Array.isArray(items)) {
+              res.statusCode = 400;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: '缺少 items 数组' }));
+              return;
+            }
+
+            const dataDir = path.resolve(process.cwd(), 'src', 'data');
+            if (!fs.existsSync(dataDir)) {
+              fs.mkdirSync(dataDir, { recursive: true });
+            }
+
+            const filePath = path.join(dataDir, 'bucketlist.json');
             fs.writeFileSync(filePath, JSON.stringify({ items }, null, 2), 'utf-8');
 
             res.setHeader('Content-Type', 'application/json');
