@@ -1,6 +1,6 @@
 ---
 name: "Chen Sanjin"
-tagline: "认真生活"
+tagline: "你想要过怎样的人生"
 avatar: ""
 birthDate: "1999-01-01"
 skills: ["退堂鼓一级演奏家", "洛克王国世界国王", "恩佐学弟"]

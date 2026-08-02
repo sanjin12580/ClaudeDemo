@@ -1,70 +1,139 @@
 ---
+// ============================================================
+// 首页 — 叙事化极简版（v1.6.0 方案 B）
+// hero + 最近 52 周密度细条 + 倒序最近事件 + 三个内容入口
+// ============================================================
+
 import Layout from '../layouts/Layout.astro';
-import LifeGrid from '../components/LifeGrid';
 import LifeCounter from '../components/LifeCounter';
-import GoalBoard from '../components/GoalBoard';
-import StatsStrip from '../components/StatsStrip.astro';
-import { loadEvents, buildGridData } from '../lib/parseEvents';
+import DensityBand from '../components/DensityBand.astro';
+import { loadEvents } from '../lib/parseEvents';
 import { loadProfile } from '../lib/parseProfile';
-import { loadGoals } from '../lib/parseGoals';
 import { loadLifeStats } from '../lib/stats';
+import { loadPosts } from '../lib/parsePosts';
+import { loadBucketList } from '../lib/parseBucketList';
+import { CATEGORY_COLORS } from '../lib/types';
 import { t } from '../lib/i18n';
-import { to } from '../lib/base';
+import { to, formatDate } from '../lib/base';
 import { siteConfig } from '../site.config';
 
 const events = await loadEvents();
 const profile = await loadProfile();
-const goalData = await loadGoals();
 const stats = await loadLifeStats();
-const gridData = buildGridData(events, siteConfig.birthYear);
-const totalEvents = events.length;
+const posts = await loadPosts();
+const bucket = await loadBucketList();
 
 /** LifeCounter 优先使用个人档案的出生日期，回退到站点配置 */
 const birthDate = profile?.birthDate ?? siteConfig.birthDate;
+const name = profile?.name ?? t.site.title;
+const tagline = profile?.tagline || t.home.taglineFallback;
+const avatar = profile?.avatar || '';
+
+/** 倒序最近 5 条事件 */
+const previewEvents = [...events].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
+
+/** 最新一篇博客 */
+const latestPost = [...posts].sort((a, b) => b.date.localeCompare(a.date))[0] ?? null;
 ---
 
 <Layout title={t.home.heading}>
-  <div class="space-y-8">
-    <div>
-      <h1 class="text-3xl font-bold tracking-tight">{t.home.heading}</h1>
-      <p class="mt-2 text-gray-500 dark:text-gray-400" set:html={t.home.summary(gridData.startYear, gridData.endYear, totalEvents)} />
+  <div class="font-serif">
+    <!-- Hero -->
+    <section class="text-center pt-4 pb-10">
+      <div class="mx-auto w-20 h-20 rounded-full border border-base-300 bg-base-200 grid place-items-center text-4xl overflow-hidden">
+        {
+          avatar ? (
+            <img src={avatar} alt={name} class="w-full h-full object-cover" />
+          ) : (
+            <span aria-hidden="true">🌱</span>
+          )
+        }
+      </div>
+      <h1 class="mt-4 text-3xl sm:text-4xl font-medium tracking-[0.15em]">{t.home.heading}</h1>
+      <p class="mt-2 text-base-content/70">{tagline} · {name}</p>
+      <p class="mt-3 text-sm text-base-content/60 font-sans">{t.home.meta(events.length)}</p>
+    </section>
+
+    <!-- 生命计数器（卡片式：进度条 + 1/e 分割线） -->
+    <div class="mx-auto max-w-3xl">
+      <LifeCounter birthDate={birthDate} client:load />
     </div>
 
-    <LifeCounter birthDate={birthDate} client:load />
-
-    <StatsStrip stats={stats} />
-
-    <GoalBoard data={goalData} client:load />
-
-    <!-- 人生清单入口 -->
-    <a
-      href={to('/bucket-list')}
-      class="card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm p-4 flex items-center justify-between hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 group"
-    >
-      <div class="flex items-center gap-3">
-        <span class="text-xl">🎯</span>
-        <div>
-          <p class="text-sm font-semibold">{t.home.bucketList}</p>
-          <p class="text-xs text-gray-400 dark:text-gray-500">
-            {stats.bucketListCounts.done} / {stats.bucketListCounts.total}
-          </p>
-        </div>
-      </div>
-      <span class="text-sm text-green-600 dark:text-green-400 group-hover:translate-x-0.5 transition-transform shrink-0">
-        {t.home.viewBucketList} →
-      </span>
-    </a>
-
-    <div class="card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm">
-      <div class="card-body">
-        <LifeGrid data={gridData} client:load />
-      </div>
+    <!-- 最近 52 周密度细条 -->
+    <div class="mt-12">
+      <DensityBand events={events} />
     </div>
 
-    <div class="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-800">
-      <a href={to('/timeline')} class="btn btn-primary">
-        {t.home.viewTimeline} →
+    <!-- 最近事件 -->
+    <section class="mt-16">
+      <h2 class="text-xl font-medium tracking-widest text-center mb-4">{t.home.recentTitle}</h2>
+      {
+        previewEvents.length === 0 ? (
+          <p class="text-center text-sm text-base-content/60">{t.home.emptyEvents}</p>
+        ) : (
+          <ol class="mx-auto max-w-2xl divide-y divide-base-200/70">
+            {
+              previewEvents.map((event, i) => {
+                const catColor = CATEGORY_COLORS[event.category] || CATEGORY_COLORS['其他'];
+                return (
+                  <li class="grid grid-cols-[64px_28px_1fr] gap-2 py-5 items-start">
+                    <span class="text-sm text-base-content/50 text-right pt-1.5 font-mono tabular-nums">
+                      {event.date.slice(0, 7).replace('-', '.')}
+                    </span>
+                    <span
+                      class={`mx-auto mt-2.5 w-2.5 h-2.5 rounded-full ${i % 2 === 0 ? 'bg-success' : 'bg-warning'}`}
+                      aria-hidden="true"
+                    />
+                    <a href={to(`/events/${event.slug}`)} class="block min-w-0 group">
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <span class={`badge badge-sm font-medium ${catColor}`}>{event.category}</span>
+                        <b class="font-medium text-lg group-hover:text-success transition-colors">{event.title}</b>
+                        <span class="text-yellow-500 text-xs shrink-0" aria-hidden="true">
+                          {'★'.repeat(event.importance)}
+                        </span>
+                      </div>
+                      <div class="text-sm text-base-content/60 mt-1">
+                        {formatDate(event.date)}
+                        {event.location ? ` · 📍 ${event.location}` : ''}
+                      </div>
+                    </a>
+                  </li>
+                );
+              })
+            }
+          </ol>
+        )
+      }
+      <div class="text-center mt-10">
+        <a href={to('/timeline')} class="btn btn-outline btn-primary rounded-full font-sans">
+          {t.home.viewTimeline}
+        </a>
+      </div>
+    </section>
+
+    <!-- 三个内容入口 -->
+    <section class="mt-16 font-sans grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-3xl mx-auto">
+      <a href={to('/blog')} class="block border-t-2 border-base-300 pt-4">
+        <span class="text-xl" aria-hidden="true">✍️</span>
+        <b class="block mt-2 font-semibold">{t.home.latestPost}</b>
+        <span class="block text-sm text-base-content/60 mt-1">
+          {latestPost ? `${latestPost.title} · ${formatDate(latestPost.date)}` : t.home.emptyPost}
+        </span>
       </a>
-    </div>
+      <a href={to('/consumptions')} class="block border-t-2 border-base-300 pt-4">
+        <span class="text-xl" aria-hidden="true">📚</span>
+        <b class="block mt-2 font-semibold">{t.home.reading}</b>
+        <span class="block text-sm text-base-content/60 mt-1">
+          {t.home.readingCounts(stats.consumptionCounts.done, stats.consumptionCounts.doing)}
+        </span>
+      </a>
+      <a href={to('/bucket-list')} class="block border-t-2 border-base-300 pt-4">
+        <span class="text-xl" aria-hidden="true">🎯</span>
+        <b class="block mt-2 font-semibold">{t.home.bucket}</b>
+        <span class="block text-sm text-base-content/60 mt-1">
+          {t.home.bucketCounts(stats.bucketListCounts.done, stats.bucketListCounts.total)}
+        </span>
+      </a>
+    </section>
   </div>
 </Layout>

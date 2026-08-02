@@ -26,21 +26,6 @@ export interface EventMeta {
   images: string[];       // 事件配图（public 下的路径，如 /images/events/xxx.jpg）
 }
 
-/** 贡献图中的一个格子 */
-export interface CellData {
-  year: number;
-  week: number;           // 1-52
-  intensity: number;      // 0-4（颜色深浅）
-  events: EventMeta[];    // 本周的事件
-}
-
-/** 贡献图传给 LifeGrid 的完整数据 */
-export interface GridData {
-  startYear: number;      // 出生年
-  endYear: number;        // 当前年
-  cells: CellData[];
-}
-
 /** 按年份分组的事件 */
 export interface YearGroup {
   year: number;
@@ -108,12 +93,13 @@ export interface Goal {
   createdAt: string;        // ISO 日期
 }
 
-/** 目标看板数据 */
+/** 目标数据分组（短期 / 长期） */
 export interface GoalBoardData {
   short: Goal[];
   long: Goal[];
 }
 
+/** 目标看板数据 */
 /** 人生清单分类 */
 export type BucketCategory = '旅行' | '体验' | '学习' | '健康' | '成就' | '其他';
 

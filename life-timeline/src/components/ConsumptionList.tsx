@@ -135,20 +135,18 @@ export default function ConsumptionList({ items }: Props) {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t.search}
-            className="w-full rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 pl-9 pr-4 py-1.5 text-xs focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-shadow"
+            className="input input-bordered input-sm w-full rounded-full pl-9 pr-4 text-xs bg-base-100"
           />
         </div>
         {/* 状态分段筛选 */}
-        <div className="flex rounded-full bg-gray-100 dark:bg-gray-800 p-1 gap-1">
+        <div className="join">
           {(['all', 'doing', 'done'] as StatusFilter[]).map((status) => {
             const active = statusFilter === status;
             return (
               <button
                 key={status}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
-                  active
-                    ? 'bg-white dark:bg-gray-700 shadow text-green-600 dark:text-green-400'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                className={`btn join-item btn-sm rounded-full ${
+                  active ? 'btn-primary' : 'btn-ghost'
                 }`}
                 onClick={() => setStatusFilter(status)}
               >
@@ -165,10 +163,8 @@ export default function ConsumptionList({ items }: Props) {
       {/* 类型筛选 Tab */}
       <div className="flex gap-1.5 overflow-x-auto pb-1 mb-5 -mx-1 px-1 scrollbar-thin">
         <button
-          className={`shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-all ${
-            typeFilter === 'all'
-              ? 'bg-green-600 text-white shadow-sm'
-              : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-green-400 dark:hover:border-green-600'
+          className={`btn btn-sm rounded-full shrink-0 ${
+            typeFilter === 'all' ? 'btn-primary' : 'btn-outline bg-base-100'
           }`}
           onClick={() => setTypeFilter('all')}
         >
@@ -186,10 +182,8 @@ export default function ConsumptionList({ items }: Props) {
           return (
             <button
               key={tp.key}
-              className={`shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-all ${
-                active
-                  ? 'bg-green-600 text-white shadow-sm'
-                  : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-green-400 dark:hover:border-green-600'
+              className={`btn btn-sm rounded-full shrink-0 ${
+                active ? 'btn-primary' : 'btn-outline bg-base-100'
               }`}
               onClick={() => setTypeFilter(tp.key)}
             >

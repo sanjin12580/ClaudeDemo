@@ -141,9 +141,9 @@ export default function SearchBar({ events, onQueryChange }: Props) {
 
       {/* 搜索结果下拉 */}
       {open && results.length > 0 && (
-        <div className="absolute top-full mt-2 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800
-                        rounded-xl shadow-lg overflow-hidden z-50">
-          <div className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500 border-b border-gray-200 dark:border-gray-800">
+        <div className="absolute top-full mt-2 w-full bg-base-100 border border-base-300
+                        rounded-box shadow-lg overflow-hidden z-50">
+          <div className="px-3 py-2 text-xs text-base-content/60 border-b border-base-300">
             {t.results(results.length)}
           </div>
           <ul ref={listRef} className="max-h-80 overflow-y-auto py-1">
@@ -181,9 +181,9 @@ export default function SearchBar({ events, onQueryChange }: Props) {
 
       {/* 无结果 */}
       {open && query.trim() && results.length === 0 && (
-        <div className="absolute top-full mt-2 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800
-                        rounded-xl shadow-lg overflow-hidden z-50">
-          <div className="px-4 py-6 text-center text-sm text-gray-400 dark:text-gray-500">
+        <div className="absolute top-full mt-2 w-full bg-base-100 border border-base-300
+                        rounded-box shadow-lg overflow-hidden z-50">
+          <div className="px-4 py-6 text-center text-sm text-base-content/60">
             {t.noResults}
           </div>
         </div>

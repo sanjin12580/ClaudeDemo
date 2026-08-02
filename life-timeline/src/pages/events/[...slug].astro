@@ -50,7 +50,7 @@ function getSlug(e: NonNullable<typeof entry>): string {
     </a>
 
     <!-- 元数据卡片 -->
-    <header class="mb-10 p-6 rounded-xl bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800">
+    <header class="mb-10 p-6 rounded-box bg-base-200/60 border border-base-300">
       <div class="flex items-center gap-3 mb-4 flex-wrap">
         <span class={`badge badge-sm font-medium ${catColor}`}>
           {category}
@@ -133,7 +133,7 @@ function getSlug(e: NonNullable<typeof entry>): string {
       <div>
         {prevEntry ? (
           <a href={to(`/events/${getSlug(prevEntry)}`)}
-             class="group card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 rounded-lg
+             class="group card bg-base-100 border border-base-300 p-4 rounded-lg
                     hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
             <span class="text-xs text-gray-400 dark:text-gray-500">{t.eventDetail.prev}</span>
             <p class="text-sm font-medium mt-1 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">
@@ -150,7 +150,7 @@ function getSlug(e: NonNullable<typeof entry>): string {
       <div>
         {nextEntry ? (
           <a href={to(`/events/${getSlug(nextEntry)}`)}
-             class="group card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 rounded-lg text-right
+             class="group card bg-base-100 border border-base-300 p-4 rounded-lg text-right
                     hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
             <span class="text-xs text-gray-400 dark:text-gray-500">{t.eventDetail.next}</span>
             <p class="text-sm font-medium mt-1 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">

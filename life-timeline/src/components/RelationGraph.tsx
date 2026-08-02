@@ -314,7 +314,7 @@ export default function RelationGraph({ people }: Props) {
       {/* Canvas 容器 */}
       <div
         ref={containerRef}
-        className="relative rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden"
+        className="relative rounded-box border border-base-300 bg-base-100 overflow-hidden"
       >
         <canvas ref={canvasRef} className="w-full block" />
       </div>
@@ -327,7 +327,7 @@ export default function RelationGraph({ people }: Props) {
         >
           <div className="absolute inset-0 bg-black/20" />
           <div
-            className="relative w-80 max-w-full h-full bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 shadow-xl overflow-y-auto p-6"
+            className="relative w-80 max-w-full h-full bg-base-100 border-l border-base-300 shadow-xl overflow-y-auto p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <button

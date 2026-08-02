@@ -30,7 +30,7 @@ const oneOverELabel = stats.passedOneOverE
   : t.dashboard.oneOverEBefore(Math.max(0, Math.round((stats.oneOverE - stats.ageYears) * 10) / 10));
 
 const cardCls =
-  'card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm';
+  'card bg-base-100 border border-base-300 p-5 shadow-sm';
 const statRow = 'flex items-center justify-between gap-2';
 const statDt = 'text-xs text-gray-500 dark:text-gray-400';
 const statDd = 'text-sm font-semibold tabular-nums';
@@ -164,7 +164,7 @@ const statDd = 'text-sm font-semibold tabular-nums';
               latestYears.map((y) => (
                 <a
                   href={to(`/yearly/${y.year}`)}
-                  class="card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300"
+                  class={`${cardCls} hover:shadow-md hover:-translate-y-0.5 transition-all duration-300`}
                 >
                   <div class="text-2xl font-bold tracking-tight">{y.year}</div>
                   <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 space-y-1">

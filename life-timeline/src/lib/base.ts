@@ -42,7 +42,7 @@ export function formatDate(dateStr: string): string {
  * 事件/博客卡片共享样式类名
  */
 export const CARD_CLASSES =
-  'group card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 ' +
+  'group card bg-base-100 border border-base-300 p-5 ' +
   'shadow-sm hover:shadow-md hover:-translate-y-0.5 ' +
   'transition-all duration-300 cursor-pointer ' +
   'focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2';

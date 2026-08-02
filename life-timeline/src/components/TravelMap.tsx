@@ -189,7 +189,7 @@ export default function TravelMap({ spots }: Props) {
       {/* 地图 */}
       <div
         ref={containerRef}
-        className="w-full rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden"
+        className="w-full rounded-box border border-base-300 overflow-hidden"
         style={{ height: '520px' }}
       />
 

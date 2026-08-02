@@ -1,0 +1,78 @@
+---
+// ============================================================
+// DensityBand — 首页极简密度细条（最近 52 周，服务端渲染）
+// 每格代表一周，颜色深浅表示该周事件数量；当前周描边
+// ============================================================
+
+import type { EventMeta } from '../lib/types';
+import { t } from '../lib/i18n';
+
+interface Props {
+  events: EventMeta[];
+}
+
+const { events } = Astro.props;
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** 解析日期字符串（YYYY / YYYY-MM / YYYY-MM-DD），缺失部分补 1 */
+function parseDate(dateStr: string): Date | null {
+  if (!dateStr) return null;
+  const parts = dateStr.split('-');
+  const year = parseInt(parts[0], 10);
+  const month = parts[1] ? parseInt(parts[1], 10) - 1 : 0;
+  const day = parts[2] ? parseInt(parts[2], 10) : 1;
+  return new Date(year, month, day);
+}
+
+/** 周一 0 点的毫秒时间戳 */
+function startOfWeek(d: Date): number {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const day = (x.getDay() + 6) % 7;
+  x.setDate(x.getDate() - day);
+  return x.getTime();
+}
+
+const nowWeek = startOfWeek(new Date());
+const counts = new Array<number>(52).fill(0);
+
+for (const ev of events) {
+  const d = parseDate(ev.date);
+  if (!d) continue;
+  const weekMs = startOfWeek(d);
+  const diff = nowWeek - weekMs;
+  if (diff < 0 || diff >= 52 * WEEK_MS) continue;
+  counts[51 - Math.floor(diff / WEEK_MS)] += 1;
+}
+
+const LEVEL_CLASS = [
+  'bg-base-200/70 border border-base-300/60',
+  'bg-success/30 border border-success/20',
+  'bg-success/50 border border-success/25',
+  'bg-success/70 border border-success/30',
+  'bg-success border-success',
+];
+---
+
+<div class="mx-auto max-w-2xl" role="img" aria-label={t.home.bandLabel}>
+  <div class="grid grid-cols-[repeat(52,minmax(0,1fr))] gap-[3px]">
+    {
+      counts.map((c, i) => {
+        const isCurrent = i === 51;
+        const level = c === 0 ? 0 : Math.min(4, c);
+        return (
+          <span
+            class={`aspect-square rounded-[2px] ${LEVEL_CLASS[level]} ${
+              isCurrent ? 'outline outline-1 outline-offset-1 outline-amber-400' : ''
+            }`}
+            title={`${51 - i} 周前 · ${c} 个事件`}
+          />
+        );
+      })
+    }
+  </div>
+  <div class="mt-2 flex items-center justify-between text-[11px] text-base-content/50">
+    <span>{t.home.bandLess}</span>
+    <span class="text-base-content/70">{t.home.bandLabel}</span>
+    <span>{t.home.bandMore}</span>
+  </div>
+</div>

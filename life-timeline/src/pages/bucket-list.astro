@@ -18,7 +18,7 @@ const total = items.length;
 const progress = total ? Math.round((doneItems.length / total) * 100) : 0;
 
 const cardCls =
-  'card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 shadow-sm';
+  'card bg-base-100 border border-base-300 p-5 shadow-sm';
 
 const tagsCls = 'flex gap-1.5 flex-wrap mt-3';
 const tagCls = 'badge badge-sm badge-ghost text-gray-500 dark:text-gray-400';
@@ -39,7 +39,7 @@ const tagCls = 'badge badge-sm badge-ghost text-gray-500 dark:text-gray-400';
           {t.bucketList.progress(progress)}
         </span>
       </div>
-      <div class="w-full h-3 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+      <div class="w-full h-3 rounded-full bg-base-300 overflow-hidden">
         <div
           class="h-full rounded-full bg-gradient-to-r from-green-500 to-emerald-400 transition-all"
           style={`width: ${progress}%`}
