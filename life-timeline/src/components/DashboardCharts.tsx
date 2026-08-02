@@ -98,7 +98,7 @@ export default function DashboardCharts({ categoryData, trendData }: Props) {
   }, [trendData]);
 
   const chartCard =
-    'card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm';
+    'card bg-base-100 border border-base-300 p-5 shadow-sm';
 
   return (
     <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">

@@ -29,7 +29,7 @@ export default function TrendingSidebar({ title, description, repos }: Props) {
 
   return (
     <aside className="w-52 flex-shrink-0">
-      <div className="sticky top-24 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 shadow-sm">
+      <div className="sticky top-24 card bg-base-100 border border-base-300 p-4 shadow-sm">
         {/* 标题 */}
         <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1.5">
           🏆 {title}

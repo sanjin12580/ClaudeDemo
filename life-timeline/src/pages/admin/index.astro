@@ -1,6 +1,6 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import AdminPanel from '../../components/AdminPanel';
+import AdminPanel from '../../components/admin/AdminPanel';
 import { loadEvents } from '../../lib/parseEvents';
 import { loadPosts } from '../../lib/parsePosts';
 import { loadProfile } from '../../lib/parseProfile';
@@ -11,8 +11,10 @@ import { t } from '../../lib/i18n';
 import { to } from '../../lib/base';
 
 // 管理后台仅本地开发使用：生产构建输出为跳转首页的静态重定向页
+const homeUrl = to('/');
+
 if (!import.meta.env.DEV) {
-  return Astro.redirect(to('/'));
+  return Astro.redirect(homeUrl);
 }
 
 const allEvents = await loadEvents(true);

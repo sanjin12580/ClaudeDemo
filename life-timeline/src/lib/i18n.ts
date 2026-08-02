@@ -28,12 +28,21 @@ export const zh = {
     admin: '⚙️ 管理',
   },
   home: {
-    heading: '🟩 人生全貌',
-    summary: (start: number, end: number, count: number) =>
-      `从 ${start} 年到 ${end} 年，共记录了 ${count} 个重要时刻。每个格子代表一周，颜色越深表示该周的事件越丰富。`,
+    heading: '我的人生',
+    taglineFallback: '认真生活',
+    meta: (count: number) => `已记录 ${count} 个重要时刻`,
+    bandLabel: '最近 52 周',
+    bandLess: '少',
+    bandMore: '多',
+    recentTitle: '最近事件',
     viewTimeline: '查看完整时间线 →',
-    bucketList: '人生清单',
-    viewBucketList: '查看愿望清单',
+    latestPost: '✍️ 最新博客',
+    reading: '📚 读书观影',
+    bucket: '🎯 愿望清单',
+    readingCounts: (done: number, doing: number) => `${done} 条已完成 · ${doing} 条在看`,
+    bucketCounts: (done: number, total: number) => `已完成 ${done} / 共 ${total} 项`,
+    emptyEvents: '还没有事件，去管理后台添加吧 →',
+    emptyPost: '还没有博客',
   },
   timeline: {
     heading: '📜 时间线',
@@ -114,6 +123,10 @@ export const zh = {
     unknownError: '未知错误',
     cancelBtn: '取消',
     deleteBtn: '删除',
+    moduleNav: '模块导航',
+    saveBtn: '保存',
+    noTitle: '（无标题）',
+    emptyContent: '（空内容）',
     tabProfile: '档案',
     profileDir: 'src/content/profile/',
     profileName: '姓名 *',
@@ -247,12 +260,6 @@ export const zh = {
       其他: '✨ 其他',
     },
   },
-  lifeGrid: {
-    less: '清淡',
-    more: '丰富',
-    tooltip: (year: number, week: number) => `${year} 年第 ${week} 周`,
-    close: '关闭',
-  },
   eventCard: {
     importance: (v: number) => `重要性: ${v}/5`,
   },
@@ -309,15 +316,6 @@ export const zh = {
     seconds: '秒',
     lifePercent: '人生进度',
     zodiac: '属',
-  },
-  /** 首页统计条 */
-  statsStrip: {
-    days: (n: number) => `已活 ${n} 天`,
-    events: (n: number) => `${n} 个事件`,
-    travel: (p: number, c: number) => `${p} 省 ${c} 城`,
-    posts: (n: number) => `${n} 篇博客`,
-    read: (n: number) => `已读 ${n} 本`,
-    goals: (n: number) => `目标 ${n}%`,
   },
   /** 人生仪表盘 */
   dashboard: {

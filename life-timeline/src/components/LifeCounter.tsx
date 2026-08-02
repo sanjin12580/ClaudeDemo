@@ -4,6 +4,8 @@ import { useI18n } from '../lib/i18n';
 
 interface Props {
   birthDate: string; // "YYYY-MM-DD"
+  /** card: 原卡片样式；inline: 首页 hero 内的紧凑文本 */
+  variant?: 'card' | 'inline';
 }
 
 /** 生肖计算（按农历年份近似，以春节为界） */
@@ -17,7 +19,7 @@ function fmt(n: number): string {
   return n.toLocaleString('zh-CN');
 }
 
-export default function LifeCounter({ birthDate }: Props) {
+export default function LifeCounter({ birthDate, variant = 'card' }: Props) {
   const { lifeCounter: t } = useI18n();
   const [now, setNow] = useState(new Date());
 
@@ -31,7 +33,7 @@ export default function LifeCounter({ birthDate }: Props) {
   const isValid = !isNaN(birth.getTime());
   if (!isValid) {
     return (
-      <div className="card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
+      <div className="card bg-base-100 border border-base-300 shadow-sm">
         <div className="card-body p-6 text-center text-gray-400 dark:text-gray-500">
           <p className="text-sm">出生日期未配置或格式无效</p>
         </div>
@@ -52,12 +54,20 @@ export default function LifeCounter({ birthDate }: Props) {
   // 出生年的生肖
   const zodiac = getZodiac(birth.getFullYear());
 
+  if (variant === 'inline') {
+    return (
+      <span className="inline-flex items-center gap-1 font-mono tabular-nums">
+        {fmt(days)} {t.days} · {fmt(weeks)} {t.weeks} · {years.toFixed(1)} {t.years}
+      </span>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
-      className="card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm"
+      className="card bg-base-100 border border-base-300 shadow-sm"
     >
       <div className="card-body p-6">
         <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-4 text-center">
@@ -102,7 +112,7 @@ export default function LifeCounter({ birthDate }: Props) {
         {/* 进度条 */}
         <div className="mt-5 space-y-1.5">
           {/* 进度条本体 */}
-          <div className="w-full h-8 bg-gray-100 dark:bg-gray-800 rounded-full shadow-inner relative">
+          <div className="w-full h-8 bg-base-300 rounded-full shadow-inner relative">
             <motion.div
               className="h-full bg-gradient-to-r from-green-400 via-green-500 to-green-600 rounded-full overflow-hidden relative flex items-center justify-end min-w-0"
               initial={{ width: 0 }}

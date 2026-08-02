@@ -1,6 +1,6 @@
 # 人生时间线 — 开发日志
 
-> 最后更新：2026-08-02 (v1.4.0)
+> 最后更新：2026-08-02 (v1.6.0)
 
 ---
 
@@ -183,6 +183,26 @@ life-timeline/
 ---
 
 ## 变更记录
+
+### 2026-08-02 — v1.6.0 (首页叙事化改版 · 方案 B)
+
+- **feat**: 首页重构为叙事风 — hero（头像 / 标题「我的人生」/ 档案签名 + 一行统计）+ 生命计数器卡片 + 最近 52 周密度细条 + 倒序最近 5 条事件（分类/星级/地点，整行进详情）+ 三个内容入口（最新博客 / 读书观影 / 愿望清单）
+- **feat**: 生命计数器恢复**卡片式**（天/周/年三栏 + 进度条 + 1/e 分割线 + 百分比标签）放在 hero 下方（用户指定保留此形态）；`LifeCounter` 同时保留 `variant="inline"` 紧凑形态供后续复用
+- **feat**: 新增 `DensityBand.astro` 服务端渲染组件 — 52 格代表最近 52 周，事件密度 0-4 级绿色阶梯，当前周描边，纯静态无 JS
+- **data**: 新增 3 条占位示例事件（2026-07 环西湖晨跑 / 2026-05 黄山看日出 / 2026-03 第一份全栈 Offer，均在近 52 周内，点亮密度条并进入最近事件列表），后续由真实数据替换
+- **refactor**: 删除完整人生格子链路 — `LifeGrid` / `buildGridData` / `GridData` / `CellData` / i18n `lifeGrid` 段；首页统计条 `StatsStrip` 与目标看板 `GoalBoard` 一并移除（统计与目标数据仍完整保留在 `/dashboard`，愿望清单入口在首页三卡与 `/bucket-list`）
+- **style**: 首页 hero 与时间线预览使用衬线字体营造叙事感（作用域限定首页，全站其他页面不受影响）
+- **chore**: 版本号 1.6.0
+
+### 2026-08-02 — v1.5.0 (UI 基座统一：管理端 shadcn 重写 + 公共页 daisyUI 规范化)
+
+- **feat**: 引入 shadcn/ui 体系 — `radix-ui` / `lucide-react` / `class-variance-authority` / `clsx` / `tailwind-merge` / `sonner`，配置 `@/*` 路径别名
+- **feat**: shadcn 主题令牌与 daisyUI 双主题共存 — 令牌定义在 `.admin-root` 子树，暗色跟随 `.dark`；Radix Dialog/Select 通过 `container` 挂载到管理端根节点以继承令牌
+- **refactor**: `AdminPanel`（2218 行单体）拆分为 `src/components/admin/` — 壳组件 + 事件/文章编辑器 + 目标/清单/媒体/档案管理器 + 共用列表/确认弹窗/媒体选择器/TagInput；表单原语全部换 shadcn（Button/Input/Textarea/Label/Badge/Card/Dialog/Select/Tabs/Slider/Switch），toast 统一 sonner，确认统一 shadcn Dialog
+- **refactor**: `MarkdownToolbar` 按钮/输入改 shadcn 风格，功能与插入模板不变
+- **refactor**: 公共页 daisyUI 规范化 — `CARD_CLASSES` 统一收敛；dashboard / yearly / bucket-list / ProfileCard / MediaGallery / ConsumptionList / SearchBar / Trending / 事件与博客详情 / 图表与地图容器统一为 daisyUI `card` / `btn` / `input` / `badge` 原语
+- **i18n**: 新增 `admin.moduleNav` / `admin.saveBtn` / `admin.noTitle` / `admin.emptyContent`
+- **chore**: 版本号 1.5.0；交互契约与 API 不变（保存原地更新 / `isNew` 空白新建 / 未保存拦截 / 删除二次确认 / 媒体上传插入 / 元数据拉取）
 
 ### 2026-08-02 — v1.4.0 (管理后台重构 + 全站体检修复)
 
@@ -487,3 +507,43 @@ life-timeline/
 - 现象：`astro check` 报 `FormEvent is deprecated`（ts6385）等提示，实际是依赖解析把类型升到了 @types/react 19，而项目用 React 18
 - 解决：显式固定 `devDependencies`：`@types/react@^18.3` + `@types/react-dom@^18.3`，提示清零
 - 教训：`@types/*` 不显式声明时会跟随传递依赖升级，大版本类型错配会产生误导性告警；框架主版本对应的类型应显式锁定
+
+### 2026-08-02 — UI 基座统一（v1.5.0）
+
+**1. shadcn 令牌与 daisyUI 变量冲突**
+
+- 现象：daisyUI 5 在 `html[data-theme]` 上定义 `--color-*` 系列和 `--border: 1px`，shadcn 的 `--border`（颜色）会被覆盖成 `1px`，`border-border` 失效
+- 解决：shadcn 令牌全部定义在 `.admin-root` 子树（亮/暗两套），并在子树内重映射 `--color-*`；`@theme inline` 只负责生成 `bg-background` 等工具类
+- 教训：两套设计系统共存时，先查对方在 `html` 上定义了什么变量（`node_modules/daisyui/theme/*.css`），避免同名覆盖
+
+**2. Radix Portal 会脱离主题作用域**
+
+- 现象：Dialog/Select 默认 portal 到 `document.body`，离开 `.admin-root` 后拿不到 shadcn 令牌，弹窗/下拉变透明或全黑
+- 解决：`ui/dialog.tsx`、`ui/select.tsx` 支持 `container` prop，管理端把根节点 ref 传进去；sonner Toaster 用 `theme` prop + MutationObserver 跟随 `.dark` 类
+- 教训：作用域化 CSS 变量的组件库必须同时约束 Portal 挂载点
+
+**3. astro check 会把 `import.meta.env.DEV` 死代码分支剔除**
+
+- 现象：admin 页生产模式下 `Astro.redirect(to('/'))` 分支被视为不可达，`to` 导入报「未使用」警告
+- 解决：把 `const homeUrl = to('/')` 提到分支外再引用
+- 教训：Astro 生产检查会窄化 DEV 分支，避免把「仅分支内使用」的导入直接写在分支里
+
+**4. shadcn 动画类依赖 `tailwindcss-animate`**
+
+- 现象：未安装该插件时 `animate-in` / `animate-out` 类静默不生成，无报错
+- 解决：本轮不引入动画插件，直接去掉这些类；后续如需动画再补依赖
+- 教训：从 shadcn 复制组件时，先核对它依赖的 Tailwind 插件是否已安装
+
+### 2026-08-02 — 首页叙事化改版（v1.6.0）
+
+**1. 删除贡献图要清理连带链路**
+
+- 现象：移除 LifeGrid 后，`buildGridData` / `GridData` / `CellData` / i18n `lifeGrid` 段会残留未使用代码
+- 解决：全量 `rg` 检查后一并删除；`GoalBoardData` 虽名为 GoalBoard，但 `parseGoals.ts` 仍在使用必须保留；`goalBoard` i18n 段被 `/yearly/[year]` 引用同样保留
+- 教训：删除组件前先 `rg` 全仓确认类型/词典是否被其他模块引用，避免误删仍在使用的基础类型
+
+**2. 稀疏数据下密度条会显示为空**
+
+- 现象：当前示例事件最晚为 2025-05，超出「最近 52 周」窗口，细条大部分为空
+- 解决：这是数据问题而非 bug——窗口内无事件就是空格；后续新增事件会自动点亮，必要时可调整 `DensityBand` 的窗口周数
+- 教训：时间窗口类可视化要明确「窗口外数据不显示」，避免被误认为渲染故障

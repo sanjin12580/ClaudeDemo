@@ -74,10 +74,10 @@ export default function MediaGallery({ media }: { media: MediaItem[] }) {
             <button
               key={ft.key}
               onClick={() => setSelectedType(ft.key)}
-              className={`text-xs px-2.5 py-1.5 rounded-lg transition-colors
+              className={`btn btn-sm rounded-full
                 ${selectedType === ft.key
-                  ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 font-medium'
-                  : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  ? 'btn-primary'
+                  : 'btn-ghost'
                 }`}
             >
               <span className="mr-1">{ft.icon}</span>
@@ -89,12 +89,12 @@ export default function MediaGallery({ media }: { media: MediaItem[] }) {
         <div className="flex-1" />
 
         {/* 搜索 */}
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={t.search}
-          className="input input-bordered input-sm w-48 bg-white dark:bg-gray-900"
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t.search}
+            className="input input-bordered input-sm w-48 bg-base-100"
         />
       </div>
 
@@ -105,10 +105,10 @@ export default function MediaGallery({ media }: { media: MediaItem[] }) {
             <button
               key={album}
               onClick={() => setSelectedAlbum(album)}
-              className={`text-xs px-2.5 py-1 rounded-lg transition-colors
+              className={`btn btn-xs rounded-full
                 ${selectedAlbum === album
-                  ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 font-medium'
-                  : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  ? 'btn-primary'
+                  : 'btn-ghost'
                 }`}
             >
               {album}
@@ -139,11 +139,11 @@ export default function MediaGallery({ media }: { media: MediaItem[] }) {
               /* 图片：点击打开灯箱 */
               <button
                 onClick={() => setLightboxItem(item)}
-                className="group card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden
+                className="group card bg-base-100 border border-base-300 overflow-hidden
                   shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 cursor-pointer
                   focus:outline-none focus:ring-2 focus:ring-green-500 w-full text-left"
               >
-                <div className="aspect-[4/3] bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                <div className="aspect-[4/3] bg-base-200 overflow-hidden">
                   <img
                     src={getFileUrl(item.url)}
                     alt={item.title || item.filename}
@@ -166,11 +166,11 @@ export default function MediaGallery({ media }: { media: MediaItem[] }) {
                 href={getPreviewUrl(item.url)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden
+                className="group card bg-base-100 border border-base-300 overflow-hidden
                   shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 cursor-pointer
                   focus:outline-none focus:ring-2 focus:ring-green-500 block"
               >
-                <div className="aspect-[4/3] bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
+                <div className="aspect-[4/3] bg-base-200 flex items-center justify-center">
                   <span className="text-5xl opacity-40">{getIconForFile(item.filename, item.fileType)}</span>
                 </div>
                 <div className="p-3">

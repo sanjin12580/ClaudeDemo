@@ -25,7 +25,7 @@ export default function ProfileCard({ profile }: Props) {
   return (
     <div className="space-y-6">
       {/* 基础信息区 */}
-      <div className="card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
+      <div className="card bg-base-100 border border-base-300 shadow-sm">
         <div className="card-body flex flex-col sm:flex-row items-start gap-6">
           {/* 头像 */}
           <div className="shrink-0">
@@ -75,7 +75,7 @@ export default function ProfileCard({ profile }: Props) {
 
       {/* 目标卡片 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="card bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl shadow-sm">
+        <div className="card bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 shadow-sm">
           <div className="card-body p-5">
             <h3 className="font-semibold text-amber-600 dark:text-amber-400 mb-2">
               🎯 {t.shortGoalTitle}
@@ -86,7 +86,7 @@ export default function ProfileCard({ profile }: Props) {
           </div>
         </div>
 
-        <div className="card bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl shadow-sm">
+        <div className="card bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 shadow-sm">
           <div className="card-body p-5">
             <h3 className="font-semibold text-info-content/80 mb-2">
               🏔️ {t.longGoalTitle}
