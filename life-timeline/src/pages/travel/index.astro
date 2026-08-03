@@ -1,16 +1,36 @@
 ---
 // ============================================================
-// /travel — 旅行足迹地图（D3.js + GeoJSON 矢量地图）
-// 从时间线事件中提取地点，在地图上点亮足迹
+// /travel — 旅行足迹地图（Leaflet 真实底图）
+// 从时间线事件中提取地点：主导访问类型、照片、正确省份归属
 // ============================================================
 
 import Layout from '../../layouts/Layout.astro';
-import TravelMap from '../../components/TravelMap';
+import TravelMap, { type TravelSpot, type VisitType } from '../../components/TravelMap';
 import { loadEvents } from '../../lib/parseEvents';
+import type { Category } from '../../lib/types';
 import { geocodeLocation, loadLocationCache } from '../../lib/geocode';
-import type { TravelSpot } from '../../components/TravelMap';
+import { provinceFromLocationCoords, type ProvinceFeatureLike } from '../../lib/regions';
+import { to } from '../../lib/base';
+import { t } from '../../lib/i18n';
+import chinaGeoJson from '../../data/china.json';
 
-// 加载所有事件（只取公开事件）
+/** 事件分类 → 访问类型 */
+function visitTypeOf(category: Category): VisitType {
+  switch (category) {
+    case '旅行':
+      return 'travel';
+    case '工作':
+      return 'work';
+    case '教育':
+      return 'edu';
+    case '健康':
+      return 'health';
+    default:
+      return 'other';
+  }
+}
+
+// 加载所有公开事件
 const events = await loadEvents(false);
 
 // 提取有地点的事件，按地点分组
@@ -22,6 +42,9 @@ for (const ev of events) {
   byLocation.get(loc)!.push(ev);
 }
 
+// 省份 GeoJSON features（ray-casting 兜底用，服务端构建时导入）
+const provinceFeatures = (chinaGeoJson as { features: unknown[] }).features as ProvinceFeatureLike[];
+
 // 加载坐标缓存，为新地点调用地理编码
 const cache = loadLocationCache();
 const spots: TravelSpot[] = [];
@@ -30,15 +53,45 @@ for (const [name, evs] of byLocation) {
   const geo = await geocodeLocation(name, cache);
   if (!geo) continue;
 
+  const sorted = [...evs].sort((a, b) => b.date.localeCompare(a.date));
+
+  // 主导访问类型：事件分类计数最多者
+  const counts: Record<VisitType, number> = {
+    travel: 0,
+    work: 0,
+    edu: 0,
+    health: 0,
+    other: 0,
+  };
+  for (const ev of sorted) counts[visitTypeOf(ev.category)] += 1;
+  let primaryType: VisitType = 'other';
+  let maxCount = -1;
+  for (const [type, count] of Object.entries(counts)) {
+    if (count > maxCount) {
+      maxCount = count;
+      primaryType = type as VisitType;
+    }
+  }
+
+  // 照片：事件配图去重并补站点 base
+  const photos = Array.from(new Set(sorted.flatMap((ev) => ev.images)))
+    .slice(0, 3)
+    .map((p) => to(p));
+
+  // 正确省份归属：名称映射优先，ray-casting 点面包含兜底
+  const province = provinceFromLocationCoords(name, geo.lon, geo.lat, provinceFeatures);
+
   spots.push({
     location: geo,
-    events: evs
-      .sort((a, b) => b.date.localeCompare(a.date))
-      .map((e) => ({
-        title: e.title,
-        date: e.date,
-        slug: e.slug,
-      })),
+    province,
+    primaryType,
+    events: sorted.map((e) => ({
+      title: e.title,
+      date: e.date,
+      slug: e.slug,
+      category: e.category,
+    })),
+    photos,
   });
 }
 
@@ -48,26 +101,30 @@ spots.sort(
     new Date(b.events[0]?.date ?? 0).getTime() -
     new Date(a.events[0]?.date ?? 0).getTime(),
 );
+
+// 天地图 Key（浏览器端），仅在有 Key 时启用天地图瓦片
+// 兼容两种来源：本地 .env（import.meta.env）与 CI 环境变量（process.env，GitHub Actions Secrets）
+const tdtKey =
+  process.env.TDT_KEY ||
+  (import.meta.env as Record<string, string | undefined>).TDT_KEY ||
+  '';
 ---
 
-<Layout
-  title="🗺️ 旅行足迹"
-  description="从人生时间线中提取的地点标记，展示旅行和生活足迹"
->
+<Layout title={t.travel.heading} description={t.travel.description}>
   <h1 class="text-2xl font-bold mb-2 flex items-center gap-2">
-    🗺️ 旅行足迹
+    {t.travel.heading}
   </h1>
   <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">
-    从时间线事件中自动提取地点，点亮每一段旅程
+    {t.travel.description}
   </p>
 
   {
     spots.length > 0 ? (
-      <TravelMap spots={spots} client:load />
+      <TravelMap spots={spots} tdtKey={tdtKey} client:only="react" />
     ) : (
       <div class="text-center py-20 text-gray-400 dark:text-gray-500">
         <p class="text-4xl mb-4">🗺️</p>
-        <p>暂无旅行记录，去时间线添加带有地点的事件吧</p>
+        <p>{t.travel.empty}</p>
       </div>
     )
   }

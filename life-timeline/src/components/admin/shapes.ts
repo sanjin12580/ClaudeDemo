@@ -3,6 +3,7 @@
 // ============================================================
 
 import type { Category } from '../../lib/types';
+import type { ConsumptionType } from '../../lib/parseConsumptions';
 
 export interface EventPostForm {
   date: string;
@@ -76,6 +77,37 @@ export const EMPTY_PROFILE_FORM: ProfileFormShape = {
   longGoal: '',
 };
 
+/** 关系图谱 — 共同经历行 */
+export interface StoryRow {
+  date: string;
+  event: string;
+}
+
+/** 关系图谱 — 人物表单 */
+export interface PersonFormShape {
+  id: string;
+  name: string;
+  relation: string;
+  importance: number;
+  avatar: string;
+  description: string;
+  links: string[];
+  stories: StoryRow[];
+}
+
+export function emptyPersonForm(): PersonFormShape {
+  return {
+    id: '',
+    name: '',
+    relation: '家人',
+    importance: 3,
+    avatar: '',
+    description: '',
+    links: [],
+    stories: [],
+  };
+}
+
 export interface ConsumptionFormShape {
   id: string | null;
   title: string;
@@ -87,13 +119,12 @@ export interface ConsumptionFormShape {
   cover: string;
   tags: string;
   year: string;
+  releaseDate: string;
   author: string;
   source: 'tmdb' | 'douban' | 'manual' | undefined;
   sourceId: string;
   sourceUrl: string;
 }
-
-type ConsumptionType = 'book' | 'novel' | 'movie' | 'tv' | 'anime' | 'variety' | 'music';
 
 export function emptyConsumptionForm(): ConsumptionFormShape {
   return {
@@ -107,6 +138,7 @@ export function emptyConsumptionForm(): ConsumptionFormShape {
     cover: '',
     tags: '',
     year: '',
+    releaseDate: '',
     author: '',
     source: undefined,
     sourceId: '',

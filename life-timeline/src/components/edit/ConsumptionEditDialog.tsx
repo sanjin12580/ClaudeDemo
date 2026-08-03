@@ -32,6 +32,7 @@ function itemToForm(c: ConsumptionItem): ConsumptionFormShape {
     cover: c.cover || '',
     tags: c.tags.join(', '),
     year: c.year ? String(c.year) : '',
+    releaseDate: c.releaseDate ?? '',
     author: c.author ?? '',
     source: c.source,
     sourceId: c.sourceId ?? '',
@@ -67,6 +68,9 @@ export default function ConsumptionEditDialog({ items, itemId, open, onClose }: 
       date: form.date,
       cover: form.cover.trim(),
       ...(form.year ? { year: Number(form.year) } : {}),
+      ...(form.releaseDate.trim()
+        ? { releaseDate: form.releaseDate.trim() }
+        : {}),
       ...(form.author ? { author: form.author.trim() } : {}),
       ...(form.source ? { source: form.source } : {}),
       ...(form.sourceId ? { sourceId: form.sourceId.trim() } : {}),

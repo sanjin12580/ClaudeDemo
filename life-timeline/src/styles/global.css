@@ -180,3 +180,120 @@ html.transitioning *::after {
 ::selection {
   background: oklch(0.65 0.15 160 / 0.3);
 }
+
+/* ============================================================
+   旅行足迹地图 — Leaflet 适配（图钉 / Popup / 暗色模式）
+   ============================================================ */
+.leaflet-container {
+  font-family: inherit;
+  background: #eef0f2;
+}
+.dark .leaflet-container {
+  background: #1e293b;
+}
+
+/* DivIcon 容器：去掉 Leaflet 默认白底边框 */
+.travel-pin-wrap,
+.travel-arrow-wrap {
+  background: transparent;
+  border: none;
+}
+
+/* Popup 卡片（daisyUI 风格） */
+.leaflet-popup-content-wrapper {
+  border-radius: 1rem;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.15);
+  padding: 0;
+  overflow: hidden;
+}
+.leaflet-popup-content {
+  margin: 0;
+  width: auto !important;
+}
+.leaflet-popup-close-button {
+  padding: 6px 8px 0 0 !important;
+}
+
+.travel-popup {
+  min-width: 210px;
+  max-width: 260px;
+  padding: 12px;
+}
+.travel-popup-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.travel-popup-city {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.travel-popup-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.travel-popup-img {
+  width: 100%;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 0.5rem;
+  margin-bottom: 8px;
+}
+.travel-popup-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+}
+.travel-popup-link {
+  color: oklch(0.45 0.15 160);
+  font-weight: 600;
+  text-decoration: none;
+}
+.travel-popup-link:hover {
+  text-decoration: underline;
+}
+.travel-popup-date {
+  color: rgb(0 0 0 / 0.45);
+  margin-left: 6px;
+  font-size: 0.72rem;
+}
+
+/* 暗色模式 Popup */
+.dark .leaflet-popup-content-wrapper {
+  background: #1f2937;
+  color: #e5e7eb;
+}
+.dark .leaflet-popup-tip {
+  background: #1f2937;
+}
+.dark .leaflet-popup-close-button {
+  color: #9ca3af !important;
+}
+.dark .travel-popup-date {
+  color: rgb(255 255 255 / 0.5);
+}
+
+/* 暗色模式控件（缩放按钮 / 版权栏） */
+.dark .leaflet-bar a {
+  background: #1f2937;
+  color: #e5e7eb;
+  border-color: #374151;
+}
+.dark .leaflet-bar a:hover {
+  background: #374151;
+}
+.dark .leaflet-control-attribution {
+  background: rgb(31 41 55 / 0.8);
+  color: #9ca3af;
+}
+.dark .leaflet-control-attribution a {
+  color: #93c5fd;
+}
