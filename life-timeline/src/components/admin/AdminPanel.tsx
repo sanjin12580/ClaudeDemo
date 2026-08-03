@@ -775,22 +775,24 @@ export default function AdminPanel({
     setMetadataHint('');
     skipAutoSearchRef.current = true;
 
-    // 后台下载封面到本地（成功则替换 URL，失败保留远程 URL）
-    setFetchingMeta(true);
-    try {
-      const resp = await fetch('/api/save-cover', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: c.cover }),
-      });
-      const json = await resp.json();
-      if (resp.ok && json.success && json.url) {
-        setConsumptionForm((prev) => ({ ...prev, cover: json.url }));
+    // 后台下载封面到本地（成功则替换 URL，失败保留远程 URL）；本地书库封面路径无需下载
+    if (/^https?:\/\//.test(c.cover)) {
+      setFetchingMeta(true);
+      try {
+        const resp = await fetch('/api/save-cover', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: c.cover }),
+        });
+        const json = await resp.json();
+        if (resp.ok && json.success && json.url) {
+          setConsumptionForm((prev) => ({ ...prev, cover: json.url }));
+        }
+      } catch {
+        // 下载失败时保留远程 URL
+      } finally {
+        setFetchingMeta(false);
       }
-    } catch {
-      // 下载失败时保留远程 URL
-    } finally {
-      setFetchingMeta(false);
     }
   }
 

@@ -31,7 +31,7 @@ export interface ConsumptionItem {
   /** 来源 ID（TMDB id 或豆瓣 subject id） */
   sourceId?: string;
   /** 元数据来源 */
-  source?: 'tmdb' | 'douban' | 'manual';
+  source?: 'tmdb' | 'douban' | 'weread' | 'itunes' | 'local' | 'manual';
   /** 来源详情链接 */
   sourceUrl?: string;
 }
@@ -50,7 +50,7 @@ export interface MetadataCandidate {
   cover: string;
   /** 建议类型（点击候选时可自动切换表单类型） */
   suggestedType?: ConsumptionType;
-  source: 'tmdb' | 'douban' | 'manual';
+  source: 'tmdb' | 'douban' | 'weread' | 'itunes' | 'local' | 'manual';
   sourceId: string;
   sourceUrl?: string;
   desc?: string;

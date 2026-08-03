@@ -28,12 +28,9 @@ const { code: reviewHtml } = await processor.render(item.review || '');
 
 const typeLabel = t.admin.consumptionTypeOptions[item.type] ?? item.type;
 const statusLabel = item.status === 'done' ? t.consumptionsPage.done : t.consumptionsPage.doing;
-const sourceLabel =
-  item.source === 'tmdb'
-    ? t.consumptionDetail.tmdb
-    : item.source === 'douban'
-      ? t.consumptionDetail.douban
-      : null;
+const sourceLabel = item.source
+  ? (t.consumptionDetail[item.source] ?? null)
+  : null;
 ---
 
 <Layout title={item.title} description={item.review ? item.review.replace(/[#>*-]/g, '').trim().slice(0, 120) : item.title}>

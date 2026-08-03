@@ -990,12 +990,14 @@ longGoal: "${escapeYaml(longGoal || '')}"
 }
 
 // ============================================================
-// 元数据获取 — TMDB（影视/动漫） + 豆瓣（书籍/小说）
+// 元数据获取 — TMDB（影视/动漫）+ 豆瓣/微信读书/iTunes/本地书库（书籍/小说）
 // TMDB API Key 从环境变量读取（life-timeline/.env.local，已被 gitignore）
 // ============================================================
 
 const TMDB_API_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_URL = 'https://image.tmdb.org/t/p/w500';
+const WEREAD_SEARCH_URL = 'https://weread.qq.com/web/search/global';
+const ITUNES_SEARCH_URL = 'https://itunes.apple.com/search';
 const DOUBAN_UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
@@ -1102,6 +1104,13 @@ function normalizeDate(raw: string): string {
     return `${y}-${String(m).padStart(2, '0')}`;
   }
   return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+/** 规范化书名用于跨源去重（忽略大小写、空白与常见标点） */
+function normalizeBookTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[\s·•,，.。:：;；!！?？()（）[\]【】《》"'“”‘’\-—–]/g, '');
 }
 
 /** TMDB 搜索（movie 用电影接口，tv/anime 用剧集接口），返回前 3 个候选（含导演/发行日期） */
@@ -1254,6 +1263,164 @@ async function doubanSearch(
   );
 }
 
+/** 微信读书搜索（Web JSON 接口，无 key），返回前 3 个候选（含出版社/评分/简介/封面） */
+async function wereadSearch(
+  query: string,
+  filters?: { author?: string; year?: string },
+): Promise<MetadataCandidate[]> {
+  const url = `${WEREAD_SEARCH_URL}?keyword=${encodeURIComponent(query)}`;
+  const resp = await fetchWithRetry(url, { headers: { 'User-Agent': DOUBAN_UA } }, 1, 6000);
+  if (!resp.ok) throw new Error(`微信读书请求失败（HTTP ${resp.status}）`);
+
+  const json: any = await resp.json();
+  const items: any[] = Array.isArray(json.books) ? json.books : [];
+  const candidates = items
+    .map((b): MetadataCandidate | null => {
+      const info = b?.bookInfo;
+      const title = String(info?.title || '').trim();
+      if (!title || !info?.bookId) return null;
+
+      const rating = Number(info?.newRating ?? 0);
+      const metaParts = [
+        info?.publisher ? `出版社：${info.publisher}` : '',
+        rating > 0 ? `评分 ${(rating / 100).toFixed(1)}` : '',
+      ].filter(Boolean);
+      const intro = String(info?.intro || '').trim();
+      const desc = intro
+        ? [...metaParts, intro.slice(0, 100)].filter(Boolean).join(' · ')
+        : metaParts.join(' · ') || undefined;
+
+      return {
+        title,
+        author: info?.author ? String(info.author).trim() : undefined,
+        cover: info?.cover ? String(info.cover).trim() : '',
+        desc,
+        suggestedType: 'book' as const,
+        source: 'weread' as const,
+        sourceId: String(info.bookId),
+        sourceUrl: info?.deepLink ? String(info.deepLink) : undefined,
+      };
+    })
+    .filter((c): c is MetadataCandidate => c !== null);
+  return sortByFilters(candidates, filters).slice(0, 3);
+}
+
+/** iTunes 电子书搜索（英文书补充），仅当标题含拉丁字母时发起请求 */
+async function itunesBookSearch(
+  query: string,
+  filters?: { author?: string; year?: string },
+): Promise<MetadataCandidate[]> {
+  if (!/[a-zA-Z]/.test(query)) return [];
+
+  const url = `${ITUNES_SEARCH_URL}?term=${encodeURIComponent(query)}&entity=ebook&limit=8`;
+  const resp = await fetchWithRetry(url, { headers: { 'User-Agent': DOUBAN_UA } }, 1, 6000);
+  if (!resp.ok) throw new Error(`iTunes 请求失败（HTTP ${resp.status}）`);
+
+  const json: any = await resp.json();
+  const items: any[] = Array.isArray(json.results) ? json.results : [];
+  const candidates = items
+    .map((r): MetadataCandidate | null => {
+      const title = String(r.trackName || '').trim();
+      if (!title || !r.trackId) return null;
+      return {
+        title,
+        author: r.artistName ? String(r.artistName).trim() : undefined,
+        year:
+          r.releaseDate
+            ? parseInt(String(r.releaseDate).slice(0, 4), 10) || undefined
+            : undefined,
+        releaseDate: r.releaseDate
+          ? String(r.releaseDate).slice(0, 10)
+          : undefined,
+        cover: r.artworkUrl100
+          ? String(r.artworkUrl100).replace('100x100bb', '600x600bb')
+          : '',
+        desc: r.description
+          ? String(r.description).replace(/<[^>]+>/g, '').slice(0, 120)
+          : undefined,
+        suggestedType: 'book' as const,
+        source: 'itunes' as const,
+        sourceId: String(r.trackId),
+        sourceUrl: r.trackViewUrl ? String(r.trackViewUrl) : undefined,
+      };
+    })
+    .filter((c): c is MetadataCandidate => c !== null);
+  return sortByFilters(candidates, filters).slice(0, 3);
+}
+
+interface LocalBookEntry {
+  title: string;
+  author?: string;
+  year?: number;
+  isbn?: string;
+  cover?: string;
+  sourceUrl?: string;
+}
+
+/** 读取本地书库（手工维护 JSON，离线兜底，模式同 anniversaries） */
+function loadLocalBookLibrary(): LocalBookEntry[] {
+  try {
+    const filePath = path.join(process.cwd(), 'src/data/book-library.json');
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const data = JSON.parse(raw);
+    return Array.isArray(data.items) ? (data.items as LocalBookEntry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 本地书库搜索（瞬时返回）：本地 JSON + 现有清单中的书籍/小说条目（按规范化标题去重）。
+ * 本地封面路径（/covers/...）无需下载，直接使用。
+ */
+function localBookSearch(
+  query: string,
+  filters?: { author?: string; year?: string },
+): MetadataCandidate[] {
+  const q = normalizeBookTitle(query);
+  if (!q) return [];
+
+  const entries: LocalBookEntry[] = [...loadLocalBookLibrary()];
+  try {
+    const filePath = path.join(process.cwd(), 'src/data/consumptions.json');
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const data = JSON.parse(raw);
+    const items: any[] = Array.isArray(data.items) ? data.items : [];
+    for (const i of items) {
+      if (i.type !== 'book' && i.type !== 'novel') continue;
+      entries.push({
+        title: String(i.title || ''),
+        author: i.author ? String(i.author) : undefined,
+        year: typeof i.year === 'number' ? i.year : undefined,
+        cover: i.cover ? String(i.cover) : undefined,
+        sourceUrl: i.sourceUrl ? String(i.sourceUrl) : undefined,
+      });
+    }
+  } catch {
+    // 清单读取失败不影响本地书库兜底
+  }
+
+  const seen = new Set<string>();
+  const candidates: MetadataCandidate[] = [];
+  for (const e of entries) {
+    const key = normalizeBookTitle(e.title);
+    if (!key || seen.has(key)) continue;
+    if (!key.includes(q) && !q.includes(key)) continue;
+    seen.add(key);
+    candidates.push({
+      title: e.title,
+      author: e.author,
+      year: e.year,
+      cover: e.cover ?? '',
+      suggestedType: 'book' as const,
+      source: 'local' as const,
+      sourceId: e.title,
+      sourceUrl: e.sourceUrl,
+    });
+  }
+  return sortByFilters(candidates, filters).slice(0, 3);
+}
+
 /** 影视元数据：TMDB 优先（含导演/发行日期/类型建议），豆瓣兜底；type=all 时同时搜电影+剧集 */
 async function fetchMovieMeta(
   title: string,
@@ -1331,31 +1498,83 @@ async function fetchMovieMeta(
   };
 }
 
-/** 书籍元数据：豆瓣搜索 */
+/** 书籍元数据：豆瓣（主）→ 微信读书（国内第二源）→ iTunes（英文书补充）→ 本地书库（离线兜底） */
 async function fetchBookMeta(
   title: string,
   filters?: { author?: string; year?: string },
 ): Promise<{ candidates: MetadataCandidate[]; hint: string }> {
-  try {
-    // 豆瓣最多等 12 秒，失败/超时返回空候选而非中断整个请求
-    const candidates = await Promise.race([
-      doubanSearch('book', title, filters),
-      new Promise<MetadataCandidate[]>((resolve) =>
-        setTimeout(() => resolve([]), 12000),
+  // 四路并行，任一路失败/超时都不影响整体；豆瓣最多等 12 秒，其余 6 秒
+  const [doubanR, wereadR, itunesR] = await Promise.all([
+    Promise.race([
+      doubanSearch('book', title, filters).then(
+        (c) => ({ candidates: c, error: '' }),
+        (e) => ({
+          candidates: [] as MetadataCandidate[],
+          error: e instanceof Error ? e.message : String(e),
+        }),
       ),
-    ]);
+      new Promise<{ candidates: MetadataCandidate[]; error: string }>((resolve) =>
+        setTimeout(() => resolve({ candidates: [], error: '豆瓣请求超时' }), 12000),
+      ),
+    ]),
+    wereadSearch(title, filters).then(
+      (c) => ({ candidates: c, error: '' }),
+      (e) => ({
+        candidates: [] as MetadataCandidate[],
+        error: e instanceof Error ? e.message : String(e),
+      }),
+    ),
+    itunesBookSearch(title, filters).then(
+      (c) => ({ candidates: c, error: '' }),
+      (e) => ({
+        candidates: [] as MetadataCandidate[],
+        error: e instanceof Error ? e.message : String(e),
+      }),
+    ),
+  ]);
+  let localCandidates: MetadataCandidate[] = [];
+  try {
+    localCandidates = localBookSearch(title, filters);
+  } catch {
+    localCandidates = [];
+  }
+  const localR = { candidates: localCandidates, error: '' };
+
+  // 按优先级去重合并：豆瓣 > 微信读书 > iTunes > 本地书库
+  const seen = new Set<string>();
+  const merged: MetadataCandidate[] = [];
+  for (const r of [doubanR, wereadR, itunesR, localR]) {
+    for (const c of r.candidates) {
+      const key = `${normalizeBookTitle(c.title)}|${(c.author || '').toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(c);
+    }
+  }
+
+  if (doubanR.candidates.length > 0) {
+    return { candidates: merged, hint: '' };
+  }
+  if (wereadR.candidates.length > 0) {
+    return { candidates: merged, hint: '豆瓣没有找到匹配结果，已用微信读书结果' };
+  }
+  if (itunesR.candidates.length > 0) {
+    return { candidates: merged, hint: '豆瓣/微信读书没有找到匹配结果，已用 iTunes 结果' };
+  }
+  if (localR.candidates.length > 0) {
     return {
-      candidates,
-      hint: candidates.length === 0 ? '豆瓣没有找到匹配结果，可手动填写' : '',
-    };
-  } catch (e) {
-    return {
-      candidates: [],
-      hint: `书籍搜索失败：${
-        e instanceof Error ? e.message : String(e)
-      }`,
+      candidates: merged,
+      hint: '在线书源暂不可用，已用本地书库结果（可在 book-library.json 补充书籍）',
     };
   }
+  const errors = [doubanR.error, wereadR.error, itunesR.error]
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .join('；');
+  return {
+    candidates: [],
+    hint: errors ? `书籍搜索失败：${errors}` : '没有找到匹配结果，可手动填写',
+  };
 }
 
 /** 最大请求体大小限制（50 MB，需支持大文件上传） */

@@ -121,7 +121,7 @@ export interface ConsumptionFormShape {
   year: string;
   releaseDate: string;
   author: string;
-  source: 'tmdb' | 'douban' | 'manual' | undefined;
+  source: 'tmdb' | 'douban' | 'weread' | 'itunes' | 'local' | 'manual' | undefined;
   sourceId: string;
   sourceUrl: string;
 }

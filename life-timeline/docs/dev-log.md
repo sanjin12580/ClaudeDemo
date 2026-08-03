@@ -1,6 +1,6 @@
 # 人生时间线 — 开发日志
 
-> 最后更新：2026-08-03 (v1.9.0)
+> 最后更新：2026-08-03 (v1.10.0)
 
 ---
 
@@ -709,3 +709,28 @@ life-timeline/
 - 定位：书籍唯一数据源豆瓣搜索页在用户网络下连接失败（node fetch 与 curl 均 fetch failed，属网络层阻断）；Google Books / Open Library / 微信读书接口同样不可达，系统无代理配置
 - 处理：已修复超时错误透出与整体 502（各数据源独立兜底）；书籍源本身待网络恢复或接入国内可达源
 - 教训：多数据源架构中"主源唯一"是单点风险；影视有 TMDB+豆瓣双源所以稳定，书籍只有豆瓣所以脆弱——后续应优先为书籍补充第二数据源
+
+### 2026-08-03 — 书籍元数据四级降级链（v1.10.0）
+
+**1. 书源连通性必须实测，网络结论会过期**
+
+- 现象：v1.9.0 记录「豆瓣/微信读书/Google Books/Open Library 均不可达」，但本次 curl 实测豆瓣搜索页、豆瓣联想接口、豆瓣详情页、微信读书 Web 搜索全部可达且返回真实数据；Google Books / Open Library / 国图 OPAC / 中文维基百科仍超时；百度百科返回「百度安全验证」反爬页
+- 结论：书源选型以当天实测为准，之前不可达的源不要直接否决，也不要只看 README 就接入
+- 本次接入：豆瓣（主，保留 subject_search 解析）→ 微信读书（`weread.qq.com/web/search/global`，无 key，返回书名/作者/封面/简介/出版社/评分）→ iTunes（`itunes.apple.com/search?entity=ebook`，仅英文书补充）→ 本地书库（`book-library.json`，离线兜底）
+
+**2. 降级链去重要按「源优先级 + 规范化标题」合并**
+
+- 现象：四路并行后同名书籍会重复出现（豆瓣/微信读书/本地书库都有「活着」），候选列表变长且来源混乱
+- 解决：`normalizeBookTitle()` 忽略大小写/空白/常见标点生成 key，合并顺序固定为豆瓣 > 微信读书 > iTunes > 本地书库，先到先占位；hint 按「第一个命中的源」提示本次用了谁
+- iTunes 只在标题含拉丁字母时才发起请求，避免中文书名返回一堆无关英文书
+
+**3. 本地书库的封面路径不能走 img-proxy / save-cover**
+
+- 现象：本地书库候选带 `/covers/xxx.jpg` 时，候选缩略图仍走 `/api/img-proxy?url=...`（只接受 http(s)），返回 400 破图；点击候选后 `save-cover` 也会对本地路径发下载请求
+- 解决：候选缩略图 `cover.startsWith('/')` 时直接用原路径；`applyMetadataCandidate` 只对 http(s) 封面发起下载
+- 教训：本地资源与远程资源混用时，代理/下载逻辑要按 URL 形态分流
+
+**4. source 联合类型扩展要全链清理**
+
+- 现象：`MetadataCandidate.source` / `ConsumptionItem.source` / `ConsumptionFormShape.source` 三处类型不一致会导致 astro check 报错
+- 解决：统一扩展为 `'tmdb' | 'douban' | 'weread' | 'itunes' | 'local' | 'manual'`；候选卡片来源徽标、详情页 `sourceLabel`、来源下拉选项、i18n 词典同步更新；旧数据（仅 douban/tmdb/manual）零迁移
