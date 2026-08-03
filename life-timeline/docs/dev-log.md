@@ -1,6 +1,6 @@
 # 人生时间线 — 开发日志
 
-> 最后更新：2026-08-02 (v1.7.0)
+> 最后更新：2026-08-03 (v1.8.0)
 
 ---
 
@@ -183,6 +183,17 @@ life-timeline/
 ---
 
 ## 变更记录
+
+### 2026-08-03 — v1.8.0 (旅行足迹地图 Leaflet 重构)
+
+- **feat**: `/travel` 从 ECharts 中国地图重构为 Leaflet 真实底图 — 访问类型分色图钉（旅行=橙 / 工作=蓝 / 教育=紫 / 健康=绿 / 其他=灰）、尺寸按事件数缩放、点击弹出 Popup（城市 / 类型徽标 / 事件链接 / 照片缩略图）
+- **feat**: 多瓦片源切换 — 天地图（`vec_w` 矢量底图 + `cva_w` 中文注记，Key 从 `.env` 的 `TDT_KEY` 注入）/ OSM（零配置默认）/ 高德（GCJ02 自动纠偏）/ 无底图（离线降级，标记与连线仍可用）
+- **feat**: 访问顺序连线 — 按最早事件日期排序的虚线 + 方向箭头（仅示意先后，可开关）；地图下方新增足迹时间轴，点击条目飞往该城市并打开 Popup
+- **fix**: 省份归属误判 — 萍乡原被归为湖南省、黄山被归为浙江省；扩充 `CITY_PROVINCE` 映射 + 新增 ray-casting 点面包含兜底（`provinceFromLocationCoords`，替代"最近中心点"）
+- **data**: 每个城市聚合主导访问类型（事件分类计数最多者）与照片列表（`images` 字段经 `to()` 补站点 base）
+- **i18n**: 新增 `travel` 词典段（标题 / 描述 / 统计 / 图例 / 按钮 / 空状态），页面文案全部走词典
+- **deps**: 新增 `leaflet@1.9.4` + `@types/leaflet`
+- **chore**: 版本号 1.8.0
 
 ### 2026-08-02 — v1.7.0 (开发环境原地编辑模式)
 
@@ -583,3 +594,30 @@ life-timeline/
 - 现象：管理端目标保存一直 404（toast 报错），`git log -S "write-goals"` 显示端点随 v0.7.0 kkFileView 重构消失
 - 解决：按 `write-consumptions` 模式恢复端点（全量写回 `src/data/goals.json`），并顺带新增 `/api/write-bucket-list`
 - 教训：重构时用 `rg` 全仓核对前端仍在调用的 API 路径，避免静默断链
+
+### 2026-08-03 — 旅行足迹地图重构（v1.8.0）
+
+**1. Leaflet 不能在 SSR 中导入**
+
+- 现象：`astro build` 生成 `/travel` 时崩溃 `window is not defined`（leaflet 模块顶层即访问 window）
+- 解决：TravelMap 改用 `client:only="react"` 指令纯客户端渲染；props（spots/tdtKey）由服务端页面序列化传入，数据聚合仍在构建期完成
+- 教训：依赖浏览器全局的库（leaflet 等）即使组件是客户端渲染，模块顶层 import 也会被 Astro SSR 执行，需 `client:only` 或动态 import
+
+**2. Leaflet `subdomains: undefined` 导致瓦片加载崩溃**
+
+- 现象：地图容器正常，但瓦片加载时报 `TypeError: Cannot read properties of undefined (reading 'length')`，React 错误被归因到运行时 chunk，难定位
+- 定位：Leaflet `TileLayer._getSubdomain` 直接读 `options.subdomains.length`；显式传 `subdomains: undefined`（OSM 无子域时）会覆盖默认值导致崩溃
+- 解决：构造 tileLayer options 时仅在存在子域时传入 `subdomains` 字段
+- 教训：Leaflet 的 options 不做 undefined 合并，可选字段要按需传递；生产构建下用 Chrome 无头 + `--enable-logging=stderr` 抓 console 错误比读压缩 chunk 高效
+
+**3. 省份归属"最近中心点"兜底不可靠**
+
+- 现象：萍乡（江西）被点亮为湖南、黄山（安徽）被点亮为浙江，深圳靠近香港中心点也有误判风险
+- 解决：城市→省份映射优先，未命中时用 ray-casting 判断点是否落在省份 GeoJSON 多边形内（`pointInGeometry`，纯函数、无新依赖），构建期计算后直接传省份名给前端
+- 教训：地理边界判断不要用中心点距离近似，点面包含是最小可靠方案；注意 china.json 与 Nominatim 坐标系可能存在轻微偏移，边界城市需人工核对
+
+**4. 天地图 Key 的注入与合规**
+
+- 天地图浏览器端 Key 免费申请（lbs.tianditu.gov.cn），个人版日配额约 1 万次/图层；Key 放 `.env`（gitignored），由 `travel/index.astro` 服务端读取后作为 prop 传入，避免打进所有客户端 chunk
+- 高德瓦片为 GCJ02 坐标系，需 `wgs84ToGcj02()` 纠偏（约 40 行公开算法）；直连瓦片属非官方用法，仅作为可切换选项并保留 OSM / 天地图 / 无底图三条合规路径
+- 验证：无 Key 时天地图按钮自动隐藏；配置 Key 后默认切换到天地图底图

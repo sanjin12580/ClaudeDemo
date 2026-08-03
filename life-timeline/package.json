@@ -1,7 +1,7 @@
 {
   "name": "life-timeline",
   "type": "module",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
@@ -20,6 +20,7 @@
     "d3": "^7.9.0",
     "daisyui": "^5.7.4",
     "echarts": "^6.1.0",
+    "leaflet": "^1.9.4",
     "lucide-react": "^1.28.0",
     "motion": "^12.43.0",
     "radix-ui": "^1.6.7",
@@ -32,6 +33,7 @@
   },
   "devDependencies": {
     "@types/d3": "^7.4.3",
+    "@types/leaflet": "^1.9.22",
     "@types/node": "^26.1.2",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7"
