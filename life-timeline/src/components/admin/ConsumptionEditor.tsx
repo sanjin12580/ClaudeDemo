@@ -72,7 +72,11 @@ export default function ConsumptionEditor({
     >
       {c.cover ? (
         <img
-          src={`/api/img-proxy?url=${encodeURIComponent(c.cover)}`}
+          src={
+            c.cover.startsWith('/')
+              ? c.cover
+              : `/api/img-proxy?url=${encodeURIComponent(c.cover)}`
+          }
           alt={c.title}
           className="w-9 h-12 object-cover rounded shrink-0"
         />
@@ -85,6 +89,11 @@ export default function ConsumptionEditor({
           {c.suggestedType && (
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary shrink-0">
               {t.consumptionTypeOptions[c.suggestedType] ?? c.suggestedType}
+            </span>
+          )}
+          {c.source !== 'manual' && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground shrink-0">
+              {t.consumptionSourceOptions[c.source] ?? c.source}
             </span>
           )}
         </span>
@@ -346,16 +355,32 @@ export default function ConsumptionEditor({
               <Select
                 value={form.source ?? 'manual'}
                 onValueChange={(v) =>
-                  onField('source', v === 'manual' ? undefined : (v as 'tmdb' | 'douban'))
+                  onField(
+                    'source',
+                    v === 'manual'
+                      ? undefined
+                      : (v as ConsumptionFormShape['source']),
+                  )
                 }
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent container={container}>
-                  <SelectItem value="manual">{t.consumptionSourceManual}</SelectItem>
-                  <SelectItem value="tmdb">TMDB</SelectItem>
-                  <SelectItem value="douban">豆瓣</SelectItem>
+                  {(
+                    [
+                      'manual',
+                      'tmdb',
+                      'douban',
+                      'weread',
+                      'itunes',
+                      'local',
+                    ] as const
+                  ).map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {t.consumptionSourceOptions[s] ?? s}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

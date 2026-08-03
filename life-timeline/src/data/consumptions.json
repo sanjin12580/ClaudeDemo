@@ -1,6 +1,53 @@
 {
   "items": [
     {
+      "id": "c-1785767422531",
+      "title": "蜘蛛侠：英雄远征",
+      "type": "movie",
+      "status": "done",
+      "rating": 3,
+      "review": "",
+      "date": "2026-08",
+      "cover": "/covers/cover-1785767419289-ab3e471.jpg",
+      "year": 2019,
+      "source": "douban",
+      "sourceId": "26931786",
+      "sourceUrl": "https://movie.douban.com/subject/26931786/",
+      "tags": []
+    },
+    {
+      "id": "c-1785767176015",
+      "title": "武动乾坤",
+      "type": "book",
+      "status": "done",
+      "rating": 3,
+      "review": "",
+      "date": "2026-08",
+      "cover": "/covers/cover-1785767243988-53beea8f.jpg",
+      "year": 2018,
+      "releaseDate": "2018-01",
+      "author": "天蚕土豆",
+      "source": "douban",
+      "sourceId": "30732351",
+      "sourceUrl": "https://book.douban.com/subject/30732351/",
+      "tags": []
+    },
+    {
+      "id": "c-1785767096630",
+      "title": "绝叫",
+      "type": "book",
+      "status": "done",
+      "rating": 3,
+      "review": "",
+      "date": "2026-08",
+      "cover": "/covers/cover-1785766996410-3bf98ee9.jpg",
+      "author": "[日] 叶真中显",
+      "source": "douban",
+      "sourceId": "35031587",
+      "sourceUrl": "https://book.douban.com/subject/35031587/",
+      "tags": []
+    },
+    {
       "id": "c-1785745327051",
       "title": "怪侠一枝梅",
       "type": "tv",

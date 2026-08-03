@@ -252,6 +252,14 @@ export const zh = {
       done: '✅ 已看',
       doing: '📖 在看',
     },
+    consumptionSourceOptions: {
+      manual: '手动',
+      tmdb: 'TMDB',
+      douban: '豆瓣',
+      weread: '微信读书',
+      itunes: 'iTunes',
+      local: '本地书库',
+    },
   },
   /** 读书观影页面 */
   consumptionsPage: {
@@ -277,8 +285,12 @@ export const zh = {
     source: '来源',
     review: '感受',
     notFound: '记录未找到',
+    manual: '手动',
     douban: '豆瓣',
     tmdb: 'TMDB',
+    weread: '微信读书',
+    itunes: 'iTunes',
+    local: '本地书库',
   },
   /** 人生清单 */
   bucketList: {
