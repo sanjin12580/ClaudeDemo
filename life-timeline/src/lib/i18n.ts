@@ -408,6 +408,30 @@ export const zh = {
     viewTimeline: '查看时间线 →',
     empty: '还没有任何年份数据',
   },
+  /** 旅行足迹 */
+  travel: {
+    heading: '🗺️ 旅行足迹',
+    description: '从时间线事件中自动提取地点，点亮每一段旅程',
+    empty: '暂无旅行记录，去时间线添加带有地点的事件吧',
+    provinces: '个省份',
+    cities: '个城市',
+    events: '个事件',
+    connections: '访问顺序连线',
+    timeline: '📅 足迹时间轴',
+    tiles: {
+      tianditu: '天地图',
+      osm: 'OSM',
+      gaode: '高德',
+      none: '无底图',
+    },
+    visitTypes: {
+      travel: '旅行',
+      work: '工作',
+      edu: '教育',
+      health: '健康',
+      other: '其他',
+    },
+  },
   /** 目标看板 */
   goalBoard: {
     heading: '🎯 当前目标',
