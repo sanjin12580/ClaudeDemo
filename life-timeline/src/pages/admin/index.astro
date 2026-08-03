@@ -7,8 +7,10 @@ import { loadProfile } from '../../lib/parseProfile';
 import { loadGoals } from '../../lib/parseGoals';
 import { loadMedia } from '../../lib/parseMedia';
 import { loadConsumptions } from '../../lib/parseConsumptions';
+import type { RelationsData } from '../../lib/types';
 import { t } from '../../lib/i18n';
 import { to } from '../../lib/base';
+import relationsData from '../../data/relations.json';
 
 // 管理后台仅本地开发使用：生产构建输出为跳转首页的静态重定向页
 const homeUrl = to('/');
@@ -41,6 +43,15 @@ const consumptionData = await loadConsumptions();
       </div>
     </div>
 
-    <AdminPanel events={allEvents} posts={allPosts} profile={profile} goals={allGoals} media={allMedia} consumptions={consumptionData.items} client:load />
+    <AdminPanel
+      events={allEvents}
+      posts={allPosts}
+      profile={profile}
+      goals={allGoals}
+      media={allMedia}
+      consumptions={consumptionData.items}
+      relations={relationsData as unknown as RelationsData}
+      client:load
+    />
   </div>
 </Layout>

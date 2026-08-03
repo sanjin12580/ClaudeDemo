@@ -89,6 +89,14 @@ const sourceLabel =
               </div>
             )
           }
+          {
+            item.releaseDate && (
+              <div class="flex gap-2">
+                <dt class="text-gray-400 dark:text-gray-500 shrink-0 w-20">{t.consumptionDetail.releaseDate}</dt>
+                <dd>{item.releaseDate}</dd>
+              </div>
+            )
+          }
           <div class="flex gap-2">
             <dt class="text-gray-400 dark:text-gray-500 shrink-0 w-20">{t.consumptionDetail.date}</dt>
             <dd>{formatDate(item.date)}</dd>

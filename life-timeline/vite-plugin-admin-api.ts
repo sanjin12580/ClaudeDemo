@@ -485,6 +485,99 @@ longGoal: "${escapeYaml(longGoal || '')}"
         });
       });
 
+      // === 保存关系图谱 ===
+      server.middlewares.use('/api/write-relations', (req, res) => {
+        if (req.method !== 'POST') {
+          res.statusCode = 405;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: '仅支持 POST 方法' }));
+          return;
+        }
+
+        readBody(req).then((body) => {
+          try {
+            const { people } = JSON.parse(body);
+            if (!Array.isArray(people)) {
+              res.statusCode = 400;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: '缺少 people 数组' }));
+              return;
+            }
+
+            // 清洗并校验人物数据
+            const ids = new Set<string>();
+            const cleaned = people.map((p: Record<string, unknown>) => {
+              const id = String(p?.id ?? '').trim();
+              const name = String(p?.name ?? '').trim();
+              const relation = String(p?.relation ?? '').trim();
+              if (!id || !name || !relation) {
+                throw new Error('人物缺少必填字段：id、name、relation');
+              }
+              ids.add(id);
+              return {
+                id,
+                name,
+                relation,
+                importance: Math.min(
+                  5,
+                  Math.max(1, Math.round(Number(p?.importance) || 3)),
+                ),
+                avatar: String(p?.avatar ?? ''),
+                description: String(p?.description ?? ''),
+                links: Array.isArray(p?.links)
+                  ? p.links.map((l) => String(l))
+                  : [],
+                stories: Array.isArray(p?.stories)
+                  ? p.stories
+                      .map((s) => ({
+                        date: String((s as Record<string, unknown>)?.date ?? ''),
+                        event: String((s as Record<string, unknown>)?.event ?? ''),
+                      }))
+                      .filter((s) => s.date || s.event)
+                  : [],
+              };
+            });
+
+            // 过滤失效的连线（不存在的 id 或自连）
+            const final = cleaned.map((p) => ({
+              ...p,
+              links: p.links.filter(
+                (l: string) => l && l !== p.id && ids.has(l),
+              ),
+            }));
+
+            const filePath = path.resolve(
+              process.cwd(),
+              'src',
+              'data',
+              'relations.json',
+            );
+            fs.writeFileSync(
+              filePath,
+              JSON.stringify({ people: final }, null, 2) + '\n',
+              'utf-8',
+            );
+
+            res.setHeader('Content-Type', 'application/json');
+            res.end(
+              JSON.stringify({
+                success: true,
+                path: path.relative(process.cwd(), filePath),
+              }),
+            );
+          } catch (err) {
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(
+              JSON.stringify({
+                error: '保存失败',
+                detail: err instanceof Error ? err.message : String(err),
+              }),
+            );
+          }
+        });
+      });
+
       // === 保存媒体元数据 ===
       server.middlewares.use('/api/write-media', (req, res) => {
         if (req.method !== 'POST') {
@@ -773,6 +866,9 @@ longGoal: "${escapeYaml(longGoal || '')}"
         const url = new URL(req.url ?? '/', 'http://localhost');
         const type = url.searchParams.get('type') ?? '';
         const title = (url.searchParams.get('title') ?? '').trim();
+        const author = (url.searchParams.get('author') ?? '').trim();
+        const year = (url.searchParams.get('year') ?? '').trim();
+        const filters = { author, year };
 
         if (!title) {
           res.statusCode = 400;
@@ -784,44 +880,22 @@ longGoal: "${escapeYaml(longGoal || '')}"
           let candidates: MetadataCandidate[] = [];
           let hint = '';
 
-          if (type === 'movie' || type === 'tv' || type === 'anime') {
-            // TMDB 与豆瓣竞速：谁先返回有效结果用谁，避免网络差时干等 TMDB 重试
-            const tmdbP = tmdbSearch(type, title).then(
-              (c) => ({ kind: 'tmdb' as const, candidates: c, error: '' }),
-              (e) => ({
-                kind: 'tmdb' as const,
-                candidates: [] as MetadataCandidate[],
-                error: e instanceof Error ? e.message : String(e),
-              }),
-            );
-            const doubanP = doubanSearch('movie', title).then(
-              (c) => ({ kind: 'douban' as const, candidates: c, error: '' }),
-              (e) => ({
-                kind: 'douban' as const,
-                candidates: [] as MetadataCandidate[],
-                error: e instanceof Error ? e.message : String(e),
-              }),
-            );
-            const first = await Promise.race([tmdbP, doubanP]);
-            if (first.kind === 'tmdb' && first.candidates.length > 0) {
-              candidates = first.candidates;
-            } else {
-              // TMDB 无结果或失败 → 等豆瓣结果
-              const doubanR = await doubanP;
-              if (doubanR.candidates.length > 0) {
-                candidates = doubanR.candidates;
-                hint = first.error
-                  ? `TMDB 暂不可用（${first.error}），已改用豆瓣结果`
-                  : 'TMDB 没有找到匹配结果，已改用豆瓣结果';
-              } else {
-                hint = first.error
-                  ? `TMDB: ${first.error}；豆瓣: ${doubanR.error}`
-                  : `豆瓣: ${doubanR.error}`;
-              }
-            }
+          // type=all：影视 + 书籍并行搜索（候选带类型徽标，点击自动切换类型）
+          if (type === 'all') {
+            const [movieR, bookR] = await Promise.all([
+              fetchMovieMeta(title, filters),
+              fetchBookMeta(title, filters),
+            ]);
+            candidates = [...movieR.candidates, ...bookR.candidates];
+            hint = movieR.hint || bookR.hint || '';
+          } else if (type === 'movie' || type === 'tv' || type === 'anime') {
+            const r = await fetchMovieMeta(title, filters, type);
+            candidates = r.candidates;
+            hint = r.hint;
           } else if (type === 'book' || type === 'novel') {
-            candidates = await doubanSearch('book', title);
-            if (candidates.length === 0) hint = '豆瓣没有找到匹配结果，可手动填写';
+            const r = await fetchBookMeta(title, filters);
+            candidates = r.candidates;
+            hint = r.hint;
           } else {
             hint = '综艺/音乐暂不支持自动获取，请手动填写';
           }
@@ -976,6 +1050,10 @@ async function fetchWithRetry(
       if (resp.ok) return resp;
       lastErr = new Error(`HTTP ${resp.status}`);
     } catch (err) {
+      // 超时中止：转换为友好错误，避免 "This operation was aborted" 原始信息
+      if (err instanceof Error && err.name === 'AbortError') {
+        throw new Error('请求超时（网络不稳定），请稍后重试');
+      }
       lastErr = err;
     }
     if (i < attempts - 1) {
@@ -985,8 +1063,53 @@ async function fetchWithRetry(
   throw lastErr;
 }
 
-/** TMDB 搜索（movie 用电影接口，tv/anime 用剧集接口），返回前 3 个候选 */
-async function tmdbSearch(type: string, query: string): Promise<MetadataCandidate[]> {
+/** 按 author/year 过滤条件对候选排序（完全匹配优先，提升同名作品区分度） */
+function sortByFilters(
+  candidates: MetadataCandidate[],
+  filters?: { author?: string; year?: string },
+): MetadataCandidate[] {
+  if (!filters || (!filters.author && !filters.year)) return candidates;
+  const score = (c: MetadataCandidate): number => {
+    let s = 0;
+    if (filters.author) {
+      const a = (c.author || '').toLowerCase();
+      const q = filters.author.toLowerCase();
+      if (a && q && a.includes(q)) s += 2;
+    }
+    if (filters.year) {
+      if (c.year === parseInt(filters.year, 10)) s += 2;
+    }
+    return s;
+  };
+  return [...candidates].sort((a, b) => score(b) - score(a));
+}
+
+/** 规范化发行日期："2008-5" / "2008-5-1" / "2008" → YYYY-MM-DD / YYYY-MM / YYYY */
+function normalizeDate(raw: string): string {
+  const parts = raw
+    .split('-')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (parts.length === 0) return '';
+  const y = parseInt(parts[0], 10);
+  if (!y || y < 1000 || y > 2100) return '';
+  if (parts.length === 1) return String(y);
+  const m = parseInt(parts[1], 10);
+  if (!m || m < 1 || m > 12) return String(y);
+  if (parts.length === 2) return `${y}-${String(m).padStart(2, '0')}`;
+  const d = parseInt(parts[2], 10);
+  if (!d || d < 1 || d > 31) {
+    return `${y}-${String(m).padStart(2, '0')}`;
+  }
+  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+/** TMDB 搜索（movie 用电影接口，tv/anime 用剧集接口），返回前 3 个候选（含导演/发行日期） */
+async function tmdbSearch(
+  type: string,
+  query: string,
+  filters?: { author?: string; year?: string },
+): Promise<MetadataCandidate[]> {
   const apiKey = readEnv('TMDB_API_KEY');
   const readToken = readEnv('TMDB_READ_TOKEN');
   if (!apiKey && !readToken) {
@@ -1016,23 +1139,58 @@ async function tmdbSearch(type: string, query: string): Promise<MetadataCandidat
 
   const data = await resp.json();
   const results: any[] = Array.isArray(data.results) ? data.results.slice(0, 3) : [];
-  return results
-    .map((r) => ({
-      title: r.title || r.name || r.original_title || r.original_name || '',
-      year: parseInt((r.release_date || r.first_air_date || '').slice(0, 4), 10) || undefined,
-      cover: r.poster_path ? `${TMDB_IMAGE_URL}${r.poster_path}` : '',
-      source: 'tmdb' as const,
-      sourceId: String(r.id),
-      sourceUrl: `https://www.themoviedb.org/${kind}/${r.id}`,
-      desc: (r.overview || '').slice(0, 120),
-    }))
-    .filter((c) => c.title);
+
+  // 并行拉取每个候选的导演（credits 接口），失败不影响候选
+  const candidates = await Promise.all(
+    results.map(async (r): Promise<MetadataCandidate | null> => {
+      const title = r.title || r.name || r.original_title || r.original_name || '';
+      if (!title) return null;
+      const releaseDate = r.release_date || r.first_air_date || '';
+      let director = '';
+      try {
+        const creditsUrl = readToken
+          ? `${TMDB_API_URL}/${kind}/${r.id}/credits?language=zh-CN`
+          : `${TMDB_API_URL}/${kind}/${r.id}/credits?api_key=${encodeURIComponent(apiKey)}&language=zh-CN`;
+        const creditsResp = await fetchWithRetry(creditsUrl, init, 1, 8000);
+        if (creditsResp.ok) {
+          const credits = await creditsResp.json();
+          const crew: any[] = Array.isArray(credits.crew) ? credits.crew : [];
+          director =
+            crew.find((c) => c.job === 'Director')?.name ||
+            crew.find((c) => c.job === '导演')?.name ||
+            '';
+        }
+      } catch {
+        // 导演拉取失败不影响候选
+      }
+      return {
+        title,
+        year: parseInt((releaseDate || '').slice(0, 4), 10) || undefined,
+        releaseDate: releaseDate || undefined,
+        author: director || undefined,
+        cover: r.poster_path ? `${TMDB_IMAGE_URL}${r.poster_path}` : '',
+        suggestedType: (kind === 'movie' ? 'movie' : 'tv') as 'movie' | 'tv',
+        source: 'tmdb' as const,
+        sourceId: String(r.id),
+        sourceUrl: `https://www.themoviedb.org/${kind}/${r.id}`,
+        desc: (r.overview || '').slice(0, 120),
+      };
+    }),
+  );
+  return sortByFilters(
+    candidates.filter((c): c is MetadataCandidate => c !== null),
+    filters,
+  );
 }
 
 let lastDoubanCall = 0;
 
 /** 豆瓣搜索（带浏览器 UA，解析页面内嵌的 __DATA__ JSON），返回前 3 个候选 */
-async function doubanSearch(category: 'book' | 'movie', query: string): Promise<MetadataCandidate[]> {
+async function doubanSearch(
+  category: 'book' | 'movie',
+  query: string,
+  filters?: { author?: string; year?: string },
+): Promise<MetadataCandidate[]> {
   // 豆瓣限速：每次请求间隔至少 1.5s
   const wait = Math.max(0, lastDoubanCall + 1500 - Date.now());
   if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
@@ -1050,7 +1208,8 @@ async function doubanSearch(category: 'book' | 'movie', query: string): Promise<
 
   const data = JSON.parse(match[1]);
   const items: any[] = Array.isArray(data.items) ? data.items : [];
-  return items
+  return sortByFilters(
+    items
     .filter((i) => i.cover_url && i.url && /\/subject\//.test(i.url))
     .slice(0, 3)
     .map((i) => {
@@ -1063,11 +1222,14 @@ async function doubanSearch(category: 'book' | 'movie', query: string): Promise<
 
       if (category === 'book') {
         // abstract 形如 "刘慈欣 / 重庆出版社 / 2008-5 / 32.00"
+        const pubRaw = parts[2] || '';
         return {
           title,
           author: parts[0] || undefined,
-          year: parseInt(parts[2] || '', 10) || undefined,
+          year: parseInt(pubRaw, 10) || undefined,
+          releaseDate: normalizeDate(pubRaw) || undefined,
           cover,
+          suggestedType: 'book' as const,
           source: 'douban' as const,
           sourceId: String(i.id),
           sourceUrl: String(i.url),
@@ -1081,12 +1243,119 @@ async function doubanSearch(category: 'book' | 'movie', query: string): Promise<
         title: title.replace(/\s*\(\d{4}\)\s*$/, ''),
         year: yearMatch ? parseInt(yearMatch[1], 10) : undefined,
         cover,
+        suggestedType: 'movie' as const,
         source: 'douban' as const,
         sourceId: String(i.id),
         sourceUrl: String(i.url),
         desc,
       };
-    });
+    }),
+    filters,
+  );
+}
+
+/** 影视元数据：TMDB 优先（含导演/发行日期/类型建议），豆瓣兜底；type=all 时同时搜电影+剧集 */
+async function fetchMovieMeta(
+  title: string,
+  filters?: { author?: string; year?: string },
+  type: string = 'all',
+): Promise<{ candidates: MetadataCandidate[]; hint: string }> {
+  const kinds = type === 'all' ? (['movie', 'tv'] as const) : ([type] as const);
+  // 各 kind 并行搜索（含导演拉取），6 秒限时
+  const tmdbResults = await Promise.all(
+    kinds.map(async (kind) => {
+      try {
+        const candidates = await Promise.race([
+          tmdbSearch(kind, title, filters),
+          new Promise<MetadataCandidate[]>((resolve) =>
+            setTimeout(() => resolve([]), 6000),
+          ),
+        ]);
+        return { kind, candidates, error: '' };
+      } catch (e) {
+        return {
+          kind,
+          candidates: [] as MetadataCandidate[],
+          error: e instanceof Error ? e.message : String(e),
+        };
+      }
+    }),
+  );
+  const tmdbCandidates = tmdbResults.flatMap((r) => r.candidates);
+  if (tmdbCandidates.length > 0) {
+    return { candidates: tmdbCandidates, hint: '' };
+  }
+
+  // TMDB 无结果/超时 → 豆瓣影视兜底
+  const doubanP = doubanSearch('movie', title, filters).then(
+    (c) => ({ kind: 'douban' as const, candidates: c, error: '' }),
+    (e) => ({
+      kind: 'douban' as const,
+      candidates: [] as MetadataCandidate[],
+      error: e instanceof Error ? e.message : String(e),
+    }),
+  );
+  // 豆瓣最多等 12 秒，避免限流/超时时整体请求过慢
+  const doubanR = (await Promise.race([
+    doubanP,
+    new Promise<{ kind: 'douban'; candidates: MetadataCandidate[]; error: string }>(
+      (resolve) =>
+        setTimeout(
+          () =>
+            resolve({
+              kind: 'douban',
+              candidates: [],
+              error: '豆瓣请求超时',
+            }),
+          12000,
+        ),
+    ),
+  ])) as { kind: 'douban'; candidates: MetadataCandidate[]; error: string };
+  if (doubanR.candidates.length > 0) {
+    return {
+      candidates: doubanR.candidates,
+      hint: tmdbResults.some((r) => r.error)
+        ? 'TMDB 暂不可用，已改用豆瓣结果（导演/发行日期需手动补充）'
+        : 'TMDB 没有找到匹配结果，已改用豆瓣结果',
+    };
+  }
+  const tmdbErrors = tmdbResults
+    .map((r) => (r.error ? `TMDB(${r.kind}): ${r.error}` : ''))
+    .filter(Boolean)
+    .join('；');
+  return {
+    candidates: [],
+    hint: tmdbErrors
+      ? `${tmdbErrors}；豆瓣: ${doubanR.error}`
+      : `豆瓣: ${doubanR.error}`,
+  };
+}
+
+/** 书籍元数据：豆瓣搜索 */
+async function fetchBookMeta(
+  title: string,
+  filters?: { author?: string; year?: string },
+): Promise<{ candidates: MetadataCandidate[]; hint: string }> {
+  try {
+    // 豆瓣最多等 12 秒，失败/超时返回空候选而非中断整个请求
+    const candidates = await Promise.race([
+      doubanSearch('book', title, filters),
+      new Promise<MetadataCandidate[]>((resolve) =>
+        setTimeout(() => resolve([]), 12000),
+      ),
+    ]);
+    return {
+      candidates,
+      hint: candidates.length === 0 ? '豆瓣没有找到匹配结果，可手动填写' : '',
+    };
+  } catch (e) {
+    return {
+      candidates: [],
+      hint: `书籍搜索失败：${
+        e instanceof Error ? e.message : String(e)
+      }`,
+    };
+  }
 }
 
 /** 最大请求体大小限制（50 MB，需支持大文件上传） */

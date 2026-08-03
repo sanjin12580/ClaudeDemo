@@ -2,10 +2,20 @@
 // 读书观影清单 — 数据加载
 // ============================================================
 
+/** 媒介类型 */
+export type ConsumptionType =
+  | 'book'
+  | 'novel'
+  | 'movie'
+  | 'tv'
+  | 'anime'
+  | 'variety'
+  | 'music';
+
 export interface ConsumptionItem {
   id: string;
   title: string;
-  type: 'book' | 'novel' | 'movie' | 'tv' | 'anime' | 'variety' | 'music';
+  type: ConsumptionType;
   status: 'done' | 'doing';
   rating: number; // 1-5
   review: string;
@@ -14,6 +24,8 @@ export interface ConsumptionItem {
   tags: string[];
   /** 发行/出版年份 */
   year?: number;
+  /** 发行/上映日期（YYYY-MM-DD 或 YYYY-MM） */
+  releaseDate?: string;
   /** 作者 / 导演 */
   author?: string;
   /** 来源 ID（TMDB id 或豆瓣 subject id） */
@@ -32,8 +44,12 @@ export interface ConsumptionData {
 export interface MetadataCandidate {
   title: string;
   year?: number;
+  /** 发行/上映日期 */
+  releaseDate?: string;
   author?: string;
   cover: string;
+  /** 建议类型（点击候选时可自动切换表单类型） */
+  suggestedType?: ConsumptionType;
   source: 'tmdb' | 'douban' | 'manual';
   sourceId: string;
   sourceUrl?: string;
