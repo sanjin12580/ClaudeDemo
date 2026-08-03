@@ -4,13 +4,22 @@
 // 数据与 API 契约与 v1.4.0 完全一致
 // ============================================================
 
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
-import type { EventMeta, PostMeta, Profile, Goal, MediaItem } from '../../lib/types';
+import type {
+  EventMeta,
+  PostMeta,
+  Profile,
+  Goal,
+  MediaItem,
+  RelationsData,
+  RelationType,
+} from '../../lib/types';
 import { ALLOWED_EXTENSIONS, classifyFileType } from '../../lib/types';
 import type { ConsumptionItem, MetadataCandidate } from '../../lib/parseConsumptions';
 import { useI18n } from '../../lib/i18n';
 import { getFileUrl } from '../../lib/filePreview';
+import { cn } from '@/lib/utils';
 import { Toaster } from '../ui/toaster';
 import ModuleNav, { type AdminMode } from './ModuleNav';
 import ConfirmDialog from './ConfirmDialog';
@@ -20,17 +29,21 @@ import GoalEditor from './GoalEditor';
 import ConsumptionEditor from './ConsumptionEditor';
 import MediaEditor from './MediaEditor';
 import ProfileEditor from './ProfileEditor';
+import RelationsEditor from './RelationsEditor';
 import { EventPostList, GoalList, ConsumptionListPanel, MediaListPanel } from './Lists';
 import {
   EMPTY_EVENT_POST_FORM,
   EMPTY_GOAL_FORM,
   EMPTY_MEDIA_FORM,
   emptyConsumptionForm,
+  emptyPersonForm,
   type EventPostForm,
   type GoalFormShape,
   type MediaFormShape,
   type ProfileFormShape,
   type ConsumptionFormShape,
+  type PersonFormShape,
+  type StoryRow,
 } from './shapes';
 
 const ALL_EXTENSIONS = Object.values(ALLOWED_EXTENSIONS).flat();
@@ -42,6 +55,7 @@ interface Props {
   goals: Goal[];
   media: MediaItem[];
   consumptions: ConsumptionItem[];
+  relations: RelationsData;
 }
 
 export default function AdminPanel({
@@ -51,6 +65,7 @@ export default function AdminPanel({
   goals: initialGoals,
   media: initialMedia,
   consumptions: initialConsumptions,
+  relations: initialRelations,
 }: Props) {
   const { admin: t } = useI18n();
 
@@ -64,6 +79,7 @@ export default function AdminPanel({
   const [goals, setGoals] = useState<Goal[]>(initialGoals);
   const [consumptions, setConsumptions] = useState<ConsumptionItem[]>(initialConsumptions);
   const [media, setMedia] = useState<MediaItem[]>(initialMedia);
+  const [relations, setRelations] = useState<RelationsData>(initialRelations);
 
   // 档案表单
   const [profileForm, setProfileForm] = useState<ProfileFormShape>({
@@ -75,6 +91,20 @@ export default function AdminPanel({
     shortGoal: initialProfile?.shortGoal ?? '',
     longGoal: initialProfile?.longGoal ?? '',
   });
+  // 档案 Tab 分段（个人资料 / 关系图谱）
+  const [profileTab, setProfileTab] = useState<'profile' | 'relations'>(
+    'profile',
+  );
+  // 关系图谱表单
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
+  const [personForm, setPersonForm] = useState<PersonFormShape>(
+    emptyPersonForm(),
+  );
+  const [relationsDeleteOpen, setRelationsDeleteOpen] = useState(false);
+  const [relationStatus, setRelationStatus] = useState<
+    'idle' | 'saving' | 'success' | 'error'
+  >('idle');
+  const [relationMessage, setRelationMessage] = useState('');
 
   // 目标
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
@@ -89,6 +119,8 @@ export default function AdminPanel({
   const [metadataCandidates, setMetadataCandidates] = useState<MetadataCandidate[]>([]);
   const [metadataHint, setMetadataHint] = useState('');
   const [fetchingMeta, setFetchingMeta] = useState(false);
+  const autoSearchTimer = useRef<number | undefined>(undefined);
+  const skipAutoSearchRef = useRef(false);
 
   // 列表筛选
   const [filterCategory, setFilterCategory] = useState<string>('全部');
@@ -505,6 +537,144 @@ export default function AdminPanel({
     }
   }
 
+  // ========== 关系图谱操作 ==========
+  function selectPerson(id: string) {
+    const p = relations.people.find((x) => x.id === id);
+    if (!p) return;
+    setSelectedPersonId(id);
+    setPersonForm({
+      id: p.id,
+      name: p.name,
+      relation: p.relation,
+      importance: p.importance,
+      avatar: p.avatar ?? '',
+      description: p.description,
+      links: [...p.links],
+      stories: p.stories.map((s) => ({ ...s })),
+    });
+    setRelationStatus('idle');
+    setRelationMessage('');
+    setDirty(false);
+  }
+
+  function handleNewPerson() {
+    const id = `p-${Date.now().toString(36)}`;
+    setRelations((prev) => ({
+      people: [
+        ...prev.people,
+        {
+          id,
+          name: '',
+          relation: '家人',
+          importance: 3,
+          description: '',
+          links: [],
+          stories: [],
+        },
+      ],
+    }));
+    setSelectedPersonId(id);
+    setPersonForm(emptyPersonForm());
+    setPersonForm((prev) => ({ ...prev, id }));
+    setRelationStatus('idle');
+    setRelationMessage('');
+    setDirty(true);
+  }
+
+  /** 全量保存关系图谱（删除后立即生效也走这里） */
+  async function saveRelations(people: RelationsData['people']) {
+    setRelationStatus('saving');
+    setRelationMessage('');
+    try {
+      const resp = await fetch('/api/write-relations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ people }),
+      });
+      const data = await resp.json();
+      if (resp.ok && data.success) {
+        setRelations({ people });
+        setRelationStatus('idle');
+        setDirty(false);
+        notify('success', t.relationSaved(data.path));
+        return true;
+      }
+      setRelationStatus('error');
+      setRelationMessage(data.error || t.saveFailed);
+      notify('error', data.error || t.saveFailed);
+      return false;
+    } catch (err) {
+      setRelationStatus('error');
+      setRelationMessage(
+        t.networkError(err instanceof Error ? err.message : t.unknownError),
+      );
+      notify(
+        'error',
+        t.networkError(err instanceof Error ? err.message : t.unknownError),
+      );
+      return false;
+    }
+  }
+
+  async function handleRelationsSubmit() {
+    if (!personForm.name.trim()) {
+      setRelationStatus('error');
+      setRelationMessage(t.relationNameRequired);
+      notify('error', t.relationNameRequired);
+      return;
+    }
+    const next = relations.people.map((p) =>
+      p.id === personForm.id
+        ? {
+            ...p,
+            name: personForm.name.trim(),
+            relation: personForm.relation as RelationType,
+            importance: personForm.importance,
+            avatar: personForm.avatar.trim(),
+            description: personForm.description,
+            links: personForm.links,
+            stories: personForm.stories.filter((s) => s.date || s.event),
+          }
+        : p,
+    );
+    const ok = await saveRelations(next);
+    if (ok) {
+      setPersonForm((prev) => ({
+        ...prev,
+        stories: prev.stories.filter((s) => s.date || s.event),
+      }));
+    }
+  }
+
+  function confirmDeletePerson() {
+    setRelationsDeleteOpen(false);
+    if (!selectedPersonId) return;
+    const next = relations.people.filter((p) => p.id !== selectedPersonId);
+    // 删除后清理其他人物对该人物的连线引用
+    const cleaned = next.map((p) => ({
+      ...p,
+      links: p.links.filter((l) => l !== selectedPersonId),
+    }));
+    setSelectedPersonId(null);
+    setPersonForm(emptyPersonForm());
+    void saveRelations(cleaned);
+  }
+
+  function handleToggleLink(id: string) {
+    setPersonForm((prev) => ({
+      ...prev,
+      links: prev.links.includes(id)
+        ? prev.links.filter((l) => l !== id)
+        : [...prev.links, id],
+    }));
+    setDirty(true);
+  }
+
+  function handleStoriesChange(stories: StoryRow[]) {
+    setPersonForm((prev) => ({ ...prev, stories }));
+    setDirty(true);
+  }
+
   // ========== 清单操作 ==========
   function selectConsumption(id: string) {
     const c = consumptions.find((x) => x.id === id);
@@ -520,6 +690,7 @@ export default function AdminPanel({
       cover: c.cover || '',
       tags: c.tags.join(', '),
       year: c.year ? String(c.year) : '',
+      releaseDate: c.releaseDate ?? '',
       author: c.author ?? '',
       source: c.source,
       sourceId: c.sourceId ?? '',
@@ -528,6 +699,7 @@ export default function AdminPanel({
     setMetadataCandidates([]);
     setMetadataHint('');
     setDirty(false);
+    skipAutoSearchRef.current = true;
   }
 
   async function handleFetchMetadata() {
@@ -540,8 +712,15 @@ export default function AdminPanel({
     setMetadataHint('');
     try {
       const url =
-        `/api/fetch-metadata?type=${encodeURIComponent(consumptionForm.type)}` +
-        `&title=${encodeURIComponent(consumptionForm.title.trim())}`;
+        // type=all：同时搜索影视与书籍，候选带类型徽标，点击自动切换类型
+        `/api/fetch-metadata?type=all` +
+        `&title=${encodeURIComponent(consumptionForm.title.trim())}` +
+        (consumptionForm.author.trim()
+          ? `&author=${encodeURIComponent(consumptionForm.author.trim())}`
+          : '') +
+        (consumptionForm.year.trim()
+          ? `&year=${encodeURIComponent(consumptionForm.year.trim())}`
+          : '');
       const resp = await fetch(url);
       const json = await resp.json();
       if (!resp.ok || !json.success) {
@@ -557,10 +736,47 @@ export default function AdminPanel({
     }
   }
 
+  // 标题/类型变化后防抖自动搜索（程序化设置表单时跳过，避免选择条目后重复搜索）
+  useEffect(() => {
+    const title = consumptionForm.title.trim();
+    if (!title) {
+      setMetadataCandidates([]);
+      setMetadataHint('');
+      return;
+    }
+    if (skipAutoSearchRef.current) {
+      skipAutoSearchRef.current = false;
+      return;
+    }
+    window.clearTimeout(autoSearchTimer.current);
+    autoSearchTimer.current = window.setTimeout(() => {
+      void handleFetchMetadata();
+    }, 600);
+    return () => window.clearTimeout(autoSearchTimer.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [consumptionForm.title, consumptionForm.type]);
+
   async function applyMetadataCandidate(c: MetadataCandidate) {
+    // 立即填充字段（封面先用远程 URL），避免等待封面下载
+    setConsumptionForm((prev) => ({
+      ...prev,
+      // 智能填充：已手动填写的字段不被覆盖
+      title: prev.title.trim() ? prev.title : c.title,
+      type: c.suggestedType ?? prev.type,
+      year: prev.year.trim() ? prev.year : c.year ? String(c.year) : prev.year,
+      releaseDate: prev.releaseDate || c.releaseDate || '',
+      author: prev.author.trim() ? prev.author : c.author ?? prev.author,
+      cover: c.cover,
+      source: c.source,
+      sourceId: c.sourceId,
+      sourceUrl: c.sourceUrl ?? '',
+    }));
+    setMetadataCandidates([]);
+    setMetadataHint('');
+    skipAutoSearchRef.current = true;
+
+    // 后台下载封面到本地（成功则替换 URL，失败保留远程 URL）
     setFetchingMeta(true);
-    setMetadataHint(t.consumptionSavingCover);
-    let cover = c.cover;
     try {
       const resp = await fetch('/api/save-cover', {
         method: 'POST',
@@ -569,24 +785,13 @@ export default function AdminPanel({
       });
       const json = await resp.json();
       if (resp.ok && json.success && json.url) {
-        cover = json.url;
+        setConsumptionForm((prev) => ({ ...prev, cover: json.url }));
       }
     } catch {
-      // 下载失败时回退到远程 URL
+      // 下载失败时保留远程 URL
+    } finally {
+      setFetchingMeta(false);
     }
-    setConsumptionForm((prev) => ({
-      ...prev,
-      title: c.title,
-      year: c.year ? String(c.year) : prev.year,
-      author: c.author ?? prev.author,
-      cover,
-      source: c.source,
-      sourceId: c.sourceId,
-      sourceUrl: c.sourceUrl ?? '',
-    }));
-    setMetadataCandidates([]);
-    setMetadataHint('');
-    setFetchingMeta(false);
   }
 
   async function handleConsumptionSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -594,6 +799,24 @@ export default function AdminPanel({
     if (!consumptionForm.title.trim()) {
       notify('error', t.consumptionTitleRequired);
       return;
+    }
+    // 日期格式校验（YYYY / YYYY-MM / YYYY-MM-DD）
+    if (
+      consumptionForm.date.trim() &&
+      !/^\d{4}(-\d{2}(-\d{2})?)?$/.test(consumptionForm.date.trim())
+    ) {
+      notify('error', t.consumptionDateInvalid);
+      return;
+    }
+    // 年份校验（1900-2100 整数，允许空）
+    const yearTrim = consumptionForm.year.trim();
+    let yearNum: number | undefined;
+    if (yearTrim) {
+      yearNum = Number(yearTrim);
+      if (!Number.isInteger(yearNum) || yearNum < 1900 || yearNum > 2100) {
+        notify('error', t.consumptionYearInvalid);
+        return;
+      }
     }
     setStatus('saving');
 
@@ -606,7 +829,10 @@ export default function AdminPanel({
       review: consumptionForm.review,
       date: consumptionForm.date,
       cover: consumptionForm.cover.trim(),
-      ...(consumptionForm.year ? { year: Number(consumptionForm.year) } : {}),
+      ...(yearNum ? { year: yearNum } : {}),
+      ...(consumptionForm.releaseDate.trim()
+        ? { releaseDate: consumptionForm.releaseDate.trim() }
+        : {}),
       ...(consumptionForm.author ? { author: consumptionForm.author.trim() } : {}),
       ...(consumptionForm.source ? { source: consumptionForm.source } : {}),
       ...(consumptionForm.sourceId ? { sourceId: consumptionForm.sourceId.trim() } : {}),
@@ -1084,20 +1310,88 @@ export default function AdminPanel({
               onDirty={() => setDirty(true)}
             />
           ) : (
-            <ProfileEditor
-              form={profileForm}
-              status={status}
-              message={message}
-              t={t}
-              onField={(field, value) => {
-                setProfileForm((prev) => ({ ...prev, [field]: value }));
-                setDirty(true);
-              }}
-              onSubmit={handleProfileSubmit}
-            />
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {/* 档案分段：个人资料 / 关系图谱 */}
+              <div className="flex items-center gap-1 px-4 pt-3 border-b border-border/60">
+                <button
+                  type="button"
+                  onClick={() => setProfileTab('profile')}
+                  className={cn(
+                    'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+                    profileTab === 'profile'
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {t.tabProfileInfo}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProfileTab('relations')}
+                  className={cn(
+                    'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+                    profileTab === 'relations'
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {t.tabRelations}
+                </button>
+              </div>
+
+              {profileTab === 'profile' ? (
+                <ProfileEditor
+                  form={profileForm}
+                  status={status}
+                  message={message}
+                  t={t}
+                  onField={(field, value) => {
+                    setProfileForm((prev) => ({ ...prev, [field]: value }));
+                    setDirty(true);
+                  }}
+                  onSubmit={handleProfileSubmit}
+                />
+              ) : (
+                <RelationsEditor
+                  people={relations.people}
+                  selectedId={selectedPersonId}
+                  form={personForm}
+                  status={relationStatus}
+                  message={relationMessage}
+                  t={t}
+                  container={rootEl}
+                  onSelect={selectPerson}
+                  onNew={handleNewPerson}
+                  onDelete={() => setRelationsDeleteOpen(true)}
+                  onField={(field, value) => {
+                    setPersonForm((prev) => ({ ...prev, [field]: value }));
+                    setDirty(true);
+                  }}
+                  onStoriesChange={handleStoriesChange}
+                  onToggleLink={handleToggleLink}
+                  onSubmit={handleRelationsSubmit}
+                />
+              )}
+            </div>
           )}
         </main>
       </div>
+
+      {/* 关系图谱删除确认 */}
+      <ConfirmDialog
+        open={relationsDeleteOpen}
+        title={t.deleteTitle}
+        message={t.relationDeleteConfirm.replace(
+          '{title}',
+          personForm.name || t.noTitle,
+        )}
+        confirmText={t.deleteBtn}
+        danger
+        cancelText={t.cancelBtn}
+        container={rootEl}
+        onCancel={() => setRelationsDeleteOpen(false)}
+        onConfirm={confirmDeletePerson}
+      />
 
       {/* 删除确认（事件/文章/清单） */}
       <ConfirmDialog

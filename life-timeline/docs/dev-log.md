@@ -1,6 +1,6 @@
 # 人生时间线 — 开发日志
 
-> 最后更新：2026-08-03 (v1.8.0)
+> 最后更新：2026-08-03 (v1.9.0)
 
 ---
 
@@ -183,6 +183,31 @@ life-timeline/
 ---
 
 ## 变更记录
+
+### 2026-08-03 — v1.9.0 (关于页重构：叙事 Hero 风 + 以我为中心的生命图谱)
+
+- **feat**: ProfileCard 重写为叙事 Hero 风 — 大圆头像（无头像时姓名首字 + 渐变圈）、衬线大标题、生日/年龄信息条、绿色主题渐变光晕背景、技能渐变胶囊、目标卡渐变顶边
+- **feat**: RelationGraph 重写为以"我"为中心的生命图谱 — 前端用 profile 生成虚拟 self 节点（固定圆心，头像/首字母），人物按力导向环绕，人物间原连线保留
+- **feat**: 节点升级 — 圆形头像（异步加载缓存）、关系类型渐变填充、importance 控制大小、呼吸光晕（self 与高重要性节点）、hover 高亮关联 + tooltip
+- **feat**: 边升级 — 关系类型着色、粗细随 importance；关系类型图例筛选保留
+- **feat**: 图谱交互 — 手动实现的缩放平移（滚轮以鼠标为锚点）、节点拖拽、双击重置缩放、工具栏（显示标签 / 重置缩放 / 全屏 / 退出全屏）
+- **feat**: 详情面板升级 — 头像、关系徽标、故事时间轴（左侧竖线 + 圆点）、关联人物芯片
+- **refactor**: 移除杂乱粒子背景；暗色模式继续适配
+- **i18n**: relations 词典新增 showLabels / resetZoom / fullscreen / exitFullscreen / empty / self
+- **fix**: ProfileCard 头像路径经 `to()` 补站点 base（修复 GitHub Pages 下头像 404 隐患）
+- **feat**: 管理后台「档案」Tab 新增「关系图谱」分段编辑器 — 人物增删改（姓名/关系类型/重要度/头像/描述）、关联人物多选 chips、共同经历动态行（日期 + 事件）、删除二次确认；新增 `POST /api/write-relations` 全量写回 `src/data/relations.json`，保存后关于页图谱即时生效
+- **feat**: 清单录入「输入即搜，一键填充」— 标题输入防抖 600ms 自动检索元数据；候选卡片升级（封面 + 类型徽标 + 年份/导演/发行日期）；点候选一键带出 title/type/author/year/releaseDate/cover/source 字段且不覆盖手动内容；新增发行日期字段与封面预览
+- **feat**: 元数据接口升级 — TMDB 候选并行拉取导演（credits）、带出 release_date、建议类型；豆瓣书籍从 abstract 提取精确发行日期（"2008-5" → 2008-05）；fetch-metadata 支持 author/year 参与候选排序
+- **feat**: 清单表单分组重构 — 作品信息（自动带出）/ 我的记录（观看日期 + 「今天」快捷按钮、状态、评分、短评、标签）/ 来源信息折叠区；doing 状态评分可选「未评分」；公共页详情展示发行日期
+- **fix**: 清单校验 — date 格式正则校验（YYYY/YYYY-MM/YYYY-MM-DD）、year 1900-2100 整数校验，非法值拒绝保存
+- **fix**: 新建记录后首次输入标题不触发自动搜索（skip 标记在空标题时未消费）— 重置表单不再设置跳过标记
+- **feat**: 元数据搜索升级为跨类型（type=all）— 输入标题同时检索影视（TMDB+豆瓣）与书籍（豆瓣），候选带类型徽标，点击候选自动切换类型（修复默认"书籍"类型导致电影搜到书的问题）
+- **fix**: 点击候选立即填充全部字段（封面先用远程 URL），封面本地下载改为后台执行，不再阻塞字段带出
+- **feat**: 同名书影区分 — type=all 时影视同时搜电影（movie）与剧集（tv）两个 TMDB 接口（三体可同时出电影/电视剧/图书）；前端候选按「影视 / 书籍」分组展示，同名书影不再互相淹没
+- **fix**: 外部请求超时友好化 — AbortError 不再透出 "This operation was aborted" 原始报错；书籍/影视搜索失败各自兜底返回空候选 + 友好提示（豆瓣 12s 限时），单个数据源超时不再导致整个搜索 502
+- **chore**: 版本号 1.9.0
+
+> **已知问题（未解决，2026-08-03 记录）**：书籍/小说元数据搜索依赖豆瓣搜索页（search.douban.com/book），当前网络环境下该域名连接失败（fetch 层面被阻断，非限流），导致书籍候选基本查不出来；电影/电视剧走 TMDB 正常。已测试 Google Books、Open Library、微信读书（weread.qq.com）作为备用书籍源，当前网络下同样不可达；系统未配置代理。临时方案：豆瓣不可达时前端显示友好提示、影视结果不受影响；待网络环境恢复或找到国内可达的书籍数据源后再接入。备选方向：配置系统代理后让 Node 请求走代理、接入当当/京东图书搜索（需反爬处理）、或维护本地书籍库。
 
 ### 2026-08-03 — v1.8.0 (旅行足迹地图 Leaflet 重构)
 
@@ -621,3 +646,66 @@ life-timeline/
 - 天地图浏览器端 Key 免费申请（lbs.tianditu.gov.cn），个人版日配额约 1 万次/图层；Key 放 `.env`（gitignored），由 `travel/index.astro` 服务端读取后作为 prop 传入，避免打进所有客户端 chunk
 - 高德瓦片为 GCJ02 坐标系，需 `wgs84ToGcj02()` 纠偏（约 40 行公开算法）；直连瓦片属非官方用法，仅作为可切换选项并保留 OSM / 天地图 / 无底图三条合规路径
 - 验证：无 Key 时天地图按钮自动隐藏；配置 Key 后默认切换到天地图底图
+
+### 2026-08-03 — 关于页重构（v1.9.0）
+
+**1. Canvas 全屏/缩放时的尺寸适配**
+
+- 现象：全屏切换与窗口 resize 需要重测画布尺寸，若依赖 React state 驱动 measure 会导致仿真重建、节点位置重置
+- 解决：渲染循环每帧读取容器尺寸（getBoundingClientRect），变化时同步 canvas 位图尺寸与 self 圆心位置；isFullscreen 用 ref 同步给渲染循环，无需重建仿真
+- 教训：Canvas 动画循环内的尺寸适配放在渲染帧内做，比事件驱动 + state 更稳
+
+**2. 头像异步加载**
+
+- 现象：`new Image()` 后立即 drawImage 画不出内容（图片未加载完成）
+- 解决：按 URL 缓存 Image 对象，渲染循环每帧检查 `complete && naturalWidth > 0`，加载完成后自动出现在后续帧；未加载完先用首字母占位
+- 教训：Canvas 绘制外部图片必须处理加载时序，用缓存 + 轮询比 onload 单次回调更简单可靠
+
+**3. TypeScript 窄化在嵌套函数中失效**
+
+- 现象：effect 顶层 `if (!ctx) return` 后，嵌套 render 函数内 `ctx` 仍报 possibly null；WheelEvent 与 PointerEvent 参数类型冲突
+- 解决：effect 内改用非空断言（`containerRef.current!`、`getContext('2d')!`）配合防御性守卫；事件工具函数参数放宽为 `{ clientX; clientY }` 结构
+- 教训：Canvas/动画代码中嵌套函数引用的 DOM 对象，用非空断言比依赖窄化保留更稳
+
+### 2026-08-03 — 清单录入流程重构（v1.9.0）
+
+**1. 旧 dev server 进程残留导致"改代码不生效"**
+
+- 现象：修改 vite 插件与 React 组件后，接口响应仍是旧字段（无 releaseDate/suggestedType），候选数测试也不变；重启 dev server 无效
+- 定位：`netstat` 发现 4321 端口被 14:40 启动的旧 dev server（PID 17804）持续占用，后续 Start-Process 启动的实例端口冲突实际未监听；curl 一直命中旧进程
+- 解决：按 PID 清理全部残留 node 进程，确认端口空闲后重新启动；改用独立端口（4325）避免冲突
+- 教训：Windows 下 `Stop-Process` 需确认生效（`netstat -ano | findstr 端口` 验证），多个 dev/preview 并存时先清端口再调试，避免在旧代码上浪费排查时间
+
+**2. 新建后首次输入不触发自动搜索（skip 标记泄漏）**
+
+- 现象：新建记录后输入标题，网络面板无 fetch-metadata 请求；console 日志显示 effect 执行但 `skip=true`
+- 定位：`resetConsumptionForm` 设置 `skipAutoSearchRef=true`（防程序化设置触发搜索），但新建时表单已为空、effect 不运行，标记未被消费；用户首次输入标题时被误跳过
+- 解决：重置表单不再设置跳过标记（空标题本身不会触发搜索）；skip 标记只保留在 selectConsumption / applyCandidate（程序化填入非空标题）时使用
+- 教训：ref 标记的"设置-消费"要覆盖所有状态路径，空值路径不会消费标记时会造成泄漏
+
+**3. 豆瓣搜索页限流导致候选为空**
+
+- 现象：`/api/fetch-metadata` 间歇返回空候选（"豆瓣没有找到匹配结果"），同一请求稍后重试又有结果
+- 定位：豆瓣 subject_search 页面反爬限流（无 __DATA__ 内容时返回空数组），与代码无关
+- 处理：保留现状（豆瓣限速 1.5s + TMDB 竞速兜底），失败提示已明确展示；恢复后自动可用
+
+**4. Windows 下 Stop-Process 杀不掉 dev server（子进程残留）**
+
+- 现象：多次 `Stop-Process -Id <pid> -Force` 后端口仍被占用，改动一直不生效；`netstat` 显示监听 PID 是已"杀掉"的进程
+- 定位：Start-Process 返回的是包装进程 PID，真正的 node 子进程独立存活；Stop-Process 只杀父进程
+- 解决：改用 `taskkill /PID <pid> /F /T`（连子进程树一起杀），杀后必须 `netstat -ano | findstr 端口` 确认无 LISTENING 再启动
+- 教训：Windows 开发中清理后台 node 服务要用 taskkill /T；调试"代码改了不生效"先查端口占用，别急着怀疑缓存
+
+**5. 点击候选后字段填充被封面下载阻塞**
+
+- 现象：候选点击后表单字段迟迟不更新（网络差时），用户以为"没带出数据"
+- 定位：applyMetadataCandidate 先 await save-cover（下载封面）再 setConsumptionForm，封面下载慢时阻塞全部字段
+- 解决：先立即填充字段（封面用远程 URL），封面下载移入后台，成功后再替换为本地路径
+- 教训：用户感知的"无响应"常因一个次要请求阻塞了主要更新；关键数据先渲染，增强项后台补
+
+**6. 书籍元数据源单一且当前网络不可达**
+
+- 现象：用"活着"测试时书籍候选基本查不出来（影视正常），且报过 "This operation was aborted"
+- 定位：书籍唯一数据源豆瓣搜索页在用户网络下连接失败（node fetch 与 curl 均 fetch failed，属网络层阻断）；Google Books / Open Library / 微信读书接口同样不可达，系统无代理配置
+- 处理：已修复超时错误透出与整体 502（各数据源独立兜底）；书籍源本身待网络恢复或接入国内可达源
+- 教训：多数据源架构中"主源唯一"是单点风险；影视有 TMDB+豆瓣双源所以稳定，书籍只有豆瓣所以脆弱——后续应优先为书籍补充第二数据源

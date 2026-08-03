@@ -5,11 +5,21 @@
       "name": "父亲",
       "relation": "家人",
       "importance": 5,
+      "avatar": "",
       "description": "我的父亲，教会我坚韧和责任",
-      "links": ["mother", "sister"],
+      "links": [
+        "mother",
+        "sister"
+      ],
       "stories": [
-        { "date": "1998-06-15", "event": "这一天他成为了父亲" },
-        { "date": "2016-09-01", "event": "送我去大学报到" }
+        {
+          "date": "1998-06-15",
+          "event": "这一天他成为了父亲"
+        },
+        {
+          "date": "2016-09-01",
+          "event": "送我去大学报到"
+        }
       ]
     },
     {
@@ -17,11 +27,21 @@
       "name": "母亲",
       "relation": "家人",
       "importance": 5,
+      "avatar": "",
       "description": "我的母亲，温柔而坚强",
-      "links": ["father", "sister"],
+      "links": [
+        "father",
+        "sister"
+      ],
       "stories": [
-        { "date": "1998-06-15", "event": "她带我来到这个世界" },
-        { "date": "2020-07-01", "event": "毕业典礼上她笑得很开心" }
+        {
+          "date": "1998-06-15",
+          "event": "她带我来到这个世界"
+        },
+        {
+          "date": "2020-07-01",
+          "event": "毕业典礼上她笑得很开心"
+        }
       ]
     },
     {
@@ -29,10 +49,17 @@
       "name": "妹妹",
       "relation": "家人",
       "importance": 4,
+      "avatar": "",
       "description": "从小一起长大的妹妹",
-      "links": ["father", "mother"],
+      "links": [
+        "father",
+        "mother"
+      ],
       "stories": [
-        { "date": "2003-01-01", "event": "妹妹出生，我当哥哥了" }
+        {
+          "date": "2003-01-01",
+          "event": "妹妹出生，我当哥哥了"
+        }
       ]
     },
     {
@@ -40,12 +67,24 @@
       "name": "阿杰",
       "relation": "挚友",
       "importance": 5,
+      "avatar": "",
       "description": "大学室友，一起度过了最难忘的四年",
-      "links": ["colleague-li"],
+      "links": [
+        "colleague-li"
+      ],
       "stories": [
-        { "date": "2016-09-01", "event": "大学宿舍初次见面" },
-        { "date": "2020-07-01", "event": "一起毕业" },
-        { "date": "2025-05-20", "event": "武功山徒步" }
+        {
+          "date": "2016-09-01",
+          "event": "大学宿舍初次见面"
+        },
+        {
+          "date": "2020-07-01",
+          "event": "一起毕业"
+        },
+        {
+          "date": "2025-05-20",
+          "event": "武功山徒步"
+        }
       ]
     },
     {
@@ -53,11 +92,20 @@
       "name": "李哥",
       "relation": "导师",
       "importance": 4,
+      "avatar": "",
       "description": "入职后的技术导师，带我走进了前端世界",
-      "links": ["best-friend"],
+      "links": [
+        "best-friend"
+      ],
       "stories": [
-        { "date": "2024-03-15", "event": "入职第一天，李哥带我熟悉项目" },
-        { "date": "2024-06-01", "event": "第一次独立完成项目上线" }
+        {
+          "date": "2024-03-15",
+          "event": "入职第一天，李哥带我熟悉项目"
+        },
+        {
+          "date": "2024-06-01",
+          "event": "第一次独立完成项目上线"
+        }
       ]
     },
     {
@@ -65,10 +113,14 @@
       "name": "小王",
       "relation": "同事",
       "importance": 3,
+      "avatar": "",
       "description": "项目组的后端开发，配合默契",
       "links": [],
       "stories": [
-        { "date": "2024-05-01", "event": "一起加班上线新功能" }
+        {
+          "date": "2024-05-01",
+          "event": "一起加班上线新功能"
+        }
       ]
     }
   ]

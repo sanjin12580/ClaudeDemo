@@ -4,6 +4,7 @@ import ProfileCard from '../components/ProfileCard';
 import RelationGraph from '../components/RelationGraph';
 import { loadProfile } from '../lib/parseProfile';
 import { t } from '../lib/i18n';
+import { to } from '../lib/base';
 import type { RelationsData } from '../lib/types';
 
 const profile = await loadProfile();
@@ -28,7 +29,11 @@ if (!profile) {
     <div class="pt-6 border-t border-base-300">
       <h2 class="text-xl font-bold mb-2">🕸️ {t.relations.title}</h2>
       <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">{t.relations.description}</p>
-      <RelationGraph people={relations.people} client:load />
+      <RelationGraph
+        people={relations.people}
+        self={{ name: profile.name, avatar: profile.avatar ? to(profile.avatar) : '' }}
+        client:load
+      />
     </div>
   </div>
 </Layout>
