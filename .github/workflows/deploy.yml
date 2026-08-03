@@ -35,6 +35,9 @@ jobs:
       - name: Build
         run: npm run build
         working-directory: life-timeline
+        env:
+          # 天地图浏览器端 Key：在 GitHub 仓库 Secrets 中配置同名变量后自动注入
+          TDT_KEY: ${{ secrets.TDT_KEY }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
