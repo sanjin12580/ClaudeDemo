@@ -324,10 +324,32 @@ export default function TravelMap({ spots, tdtKey }: Props) {
         </div>
       </div>
 
+      {/* 省份探索进度 */}
+      <div className="flex items-center gap-3 mb-3">
+        <div className="flex-1 h-1.5 rounded-full bg-base-200 dark:bg-gray-800 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-green-400 to-emerald-500 transition-all duration-500"
+            style={{ width: `${Math.min(100, (provinceCount / 34) * 100)}%` }}
+          />
+        </div>
+        <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">
+          {t.travel.explored(provinceCount)}
+        </span>
+      </div>
+
+      {/* 无底图模式提示 */}
+      {provider === 'none' && (
+        <div className="mb-3 text-xs px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+          {t.travel.noTiles}
+        </div>
+      )}
+
       {/* 地图 */}
       <div
         ref={containerRef}
-        className="w-full rounded-box border border-base-300 overflow-hidden"
+        className={`w-full rounded-box border border-base-300 overflow-hidden ${
+          provider === 'none' ? 'travel-map-no-tiles' : ''
+        }`}
         style={{ height: '520px' }}
       />
 

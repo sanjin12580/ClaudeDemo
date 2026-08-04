@@ -216,6 +216,7 @@ export const zh = {
     consumptionNew: '+ 新建记录',
     consumptionEditTitle: '编辑记录',
     consumptionNewTitle: '新建记录',
+    consumptionAll: '全部',
     consumptionDeleteConfirm: '确定删除「{title}」？',
     consumptionEmpty: '还没有记录',
     consumptionSaved: (path: string) => `清单已保存: ${path}`,
@@ -467,6 +468,8 @@ export const zh = {
     provinces: '个省份',
     cities: '个城市',
     events: '个事件',
+    explored: (n: number) => `已探索 ${n} / 34 省`,
+    noTiles: '当前为无底图模式（仅显示足迹标记）',
     connections: '访问顺序连线',
     timeline: '📅 足迹时间轴',
     tiles: {

@@ -1209,6 +1209,8 @@ export default function AdminPanel({
                   title: t.tabConsumptions,
                   newBtn: t.consumptionNew,
                   empty: t.consumptionEmpty,
+                  search: t.search,
+                  all: t.consumptionAll,
                   typeOptions: t.consumptionTypeOptions,
                   statusOptions: t.consumptionStatusOptions,
                 }}

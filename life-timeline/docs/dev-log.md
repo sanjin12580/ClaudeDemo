@@ -1,6 +1,6 @@
 # 人生时间线 — 开发日志
 
-> 最后更新：2026-08-03 (v1.10.0)
+> 最后更新：2026-08-04 (v1.11.0)
 
 ---
 
@@ -184,6 +184,25 @@ life-timeline/
 
 ## 变更记录
 
+### 2026-08-04 — v1.11.0 (公共页元数据 + 清单列表增强 + 全站体检 + 旅行地图增强)
+
+- **feat**: 公共页清单编辑开启元数据 — `ConsumptionEditDialog` 启用"输入即搜、一键填充"（标题防抖 600ms 自动检索、影视/书籍分组候选、点击填充导演/发行日期/封面），复用管理后台完整能力
+- **refactor**: 防抖自动搜索下沉到 `ConsumptionEditor`（`autoSearch` prop），公共页开启、管理后台行为不变
+- **feat**: 管理端清单列表增强 — 封面缩略图（本地 `/covers/` 补 base）、搜索框（标题/作者/标签）、类型 Tab（带计数）、状态筛选（全部/在看/看过），三者组合过滤
+- **fix**: 清理 astro check 警告 — 首页移除未使用的 `bucket` 变量；admin 重定向 `homeUrl` 改为内联调用
+- **feat**: 统计层省份坐标兜底 — 字符串映射未命中时，用内置坐标表 + `locations.json` 缓存做 ray-casting 点面包含（无网络依赖），仪表盘/年度回顾省份计数更准确
+- **feat**: 旅行地图增强 — 统计栏下新增「已探索 X/34 省」渐变进度条；无底图模式加柔和网格背景与提示条
+- **chore**: 版本号 1.11.0
+
+### 2026-08-03 — v1.10.0 (书籍元数据四级降级链)
+
+- **feat**: 书籍/小说元数据四级降级链 — 豆瓣（主，subject_search 解析）→ 微信读书（`weread.qq.com/web/search/global`，无 key，带书名/作者/封面/简介/出版社/评分）→ iTunes（`itunes.apple.com/search?entity=ebook`，仅英文书补充）→ 本地书库（`book-library.json` 离线兜底）
+- **feat**: 降级链去重合并 — `normalizeBookTitle()` 规范化标题（忽略大小写/空白/标点），源优先级固定豆瓣 > 微信读书 > iTunes > 本地书库，先到先占位；hint 提示本次命中的源；iTunes 仅在标题含拉丁字母时发起请求
+- **fix**: 本地书库封面分流 — `/covers/` 本地路径不走 `/api/img-proxy` 与 `save-cover`（只处理 http(s)），候选缩略图直接使用原路径
+- **refactor**: `source` 联合类型统一扩展为 `'tmdb' | 'douban' | 'weread' | 'itunes' | 'local' | 'manual'`（MetadataCandidate / ConsumptionItem / 表单三处同步，徽标、详情页来源、下拉选项、i18n 同步），旧数据零迁移
+- **data**: 新增 `book-library.json` 本地书库；补充示例清单数据与本地封面
+- **chore**: 版本号 1.10.0
+
 ### 2026-08-03 — v1.9.0 (关于页重构：叙事 Hero 风 + 以我为中心的生命图谱)
 
 - **feat**: ProfileCard 重写为叙事 Hero 风 — 大圆头像（无头像时姓名首字 + 渐变圈）、衬线大标题、生日/年龄信息条、绿色主题渐变光晕背景、技能渐变胶囊、目标卡渐变顶边
@@ -207,7 +226,7 @@ life-timeline/
 - **fix**: 外部请求超时友好化 — AbortError 不再透出 "This operation was aborted" 原始报错；书籍/影视搜索失败各自兜底返回空候选 + 友好提示（豆瓣 12s 限时），单个数据源超时不再导致整个搜索 502
 - **chore**: 版本号 1.9.0
 
-> **已知问题（未解决，2026-08-03 记录）**：书籍/小说元数据搜索依赖豆瓣搜索页（search.douban.com/book），当前网络环境下该域名连接失败（fetch 层面被阻断，非限流），导致书籍候选基本查不出来；电影/电视剧走 TMDB 正常。已测试 Google Books、Open Library、微信读书（weread.qq.com）作为备用书籍源，当前网络下同样不可达；系统未配置代理。临时方案：豆瓣不可达时前端显示友好提示、影视结果不受影响；待网络环境恢复或找到国内可达的书籍数据源后再接入。备选方向：配置系统代理后让 Node 请求走代理、接入当当/京东图书搜索（需反爬处理）、或维护本地书籍库。
+> **已解决（2026-08-03 v1.10.0）**：书籍/小说元数据搜索曾依赖单一豆瓣源且网络不可达（详见踩坑记录第 6 条）；v1.10.0 引入豆瓣 → 微信读书 → iTunes → 本地书库四级降级链，实测"活着"等书名可正常返回候选，单源失败不再影响整体。
 
 ### 2026-08-03 — v1.8.0 (旅行足迹地图 Leaflet 重构)
 
@@ -734,3 +753,18 @@ life-timeline/
 
 - 现象：`MetadataCandidate.source` / `ConsumptionItem.source` / `ConsumptionFormShape.source` 三处类型不一致会导致 astro check 报错
 - 解决：统一扩展为 `'tmdb' | 'douban' | 'weread' | 'itunes' | 'local' | 'manual'`；候选卡片来源徽标、详情页 `sourceLabel`、来源下拉选项、i18n 词典同步更新；旧数据（仅 douban/tmdb/manual）零迁移
+
+### 2026-08-04 — 今日任务（v1.11.0）
+
+**1. 公共页自动搜索无限循环（effect 依赖不稳定函数引用）**
+
+- 现象：公共页清单新建输入标题后，`正在搜索元数据...` 一直不消失，候选不出现；接口 curl 3 秒即返回
+- 定位：`ConsumptionEditor` 的防抖 effect 依赖数组包含 `onFetchMetadata`，该函数是父组件每次渲染的新引用；搜索完成后父组件 setState 重渲染 → effect 重跑 → 清除/重设 600ms 定时器 → 又触发一次搜索 → 无限循环
+- 解决：effect 只依赖 `form.title / form.type / showMetaFetch / autoSearch`，通过 `useRef` 持有最新 `onFetchMetadata` 再调用
+- 教训：组件内 effect 依赖父组件传入的普通函数时，要么父组件 `useCallback` 稳定引用，要么 effect 内用 ref 中转；否则任何 setState 都会重置定时器形成循环
+
+**2. astro check 的 DEV 死代码消除会连带报"未使用"**
+
+- 现象：admin 页把 `Astro.redirect(to('/'))` 改为内联后，`to` 仍报未使用（分支被 DEV 消除）
+- 解决：完全不依赖 `to`，改用 `Astro.redirect(import.meta.env.BASE_URL)`；首页删除未使用的 `loadBucketList` 调用后 astro check 达到 0 errors / 0 warnings
+- 教训：仅用于非 DEV 分支的变量/导入都会被死代码消除连带标记为未使用，这类页面尽量内联或使用不会产生引用的表达式

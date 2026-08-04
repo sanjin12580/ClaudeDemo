@@ -16,8 +16,8 @@ export interface GeoLocation {
 /** 地点坐标缓存文件 */
 const CACHE_PATH = join(process.cwd(), 'src/data/locations.json');
 
-/** 预置的中国主要城市坐标（无需 API 请求） */
-const BUILTIN_LOCATIONS: Record<string, { lat: number; lon: number }> = {
+/** 预置的中国主要城市坐标（无需 API 请求，供统计层离线兜底） */
+export const BUILTIN_LOCATIONS: Record<string, { lat: number; lon: number }> = {
   深圳: { lat: 22.5431, lon: 114.0579 },
   广州: { lat: 23.1292, lon: 113.2644 },
   北京: { lat: 39.9042, lon: 116.4074 },

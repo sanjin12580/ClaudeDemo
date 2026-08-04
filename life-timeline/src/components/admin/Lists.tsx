@@ -2,10 +2,12 @@
 // Lists — 管理端各模块的列表列（事件/文章/目标/清单/媒体）
 // ============================================================
 
+import { useState } from 'react';
 import type { EventMeta, PostMeta, Goal, MediaItem, Category } from '../../lib/types';
 import { CATEGORY_COLORS, getIconForFile } from '../../lib/types';
 import type { ConsumptionItem } from '../../lib/parseConsumptions';
 import { getFileUrl } from '../../lib/filePreview';
+import { coverUrl } from '../../lib/base';
 import { cn } from '@/lib/utils';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
@@ -252,6 +254,8 @@ interface ConsumptionListProps {
     title: string;
     newBtn: string;
     empty: string;
+    search: string;
+    all: string;
     typeOptions: Record<string, string>;
     statusOptions: Record<string, string>;
   };
@@ -266,20 +270,102 @@ export function ConsumptionListPanel({
   onSelect,
   onNew,
 }: ConsumptionListProps) {
+  const [query, setQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState('全部');
+  const [statusFilter, setStatusFilter] = useState('全部');
+
+  const typeCounts = new Map<string, number>();
+  for (const c of items) {
+    typeCounts.set(c.type, (typeCounts.get(c.type) ?? 0) + 1);
+  }
+
+  const filtered = items.filter((c) => {
+    const q = query.trim().toLowerCase();
+    const matchQuery =
+      !q ||
+      c.title.toLowerCase().includes(q) ||
+      (c.author ?? '').toLowerCase().includes(q) ||
+      c.tags.some((tag) => tag.toLowerCase().includes(q));
+    const matchType = typeFilter === '全部' || c.type === typeFilter;
+    const matchStatus = statusFilter === '全部' || c.status === statusFilter;
+    return matchQuery && matchType && matchStatus;
+  });
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/60">
         <h2 className="font-semibold text-sm">{labels.title}</h2>
         <span className="text-xs text-muted-foreground">{items.length}</span>
       </div>
+      <div className="px-3 pt-2 space-y-2 border-b border-border/60">
+        <div className="flex items-center gap-2">
+          <Input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={labels.search}
+            className="h-8 text-xs"
+          />
+          <Button variant="ghost" size="sm" className="shrink-0 text-primary" onClick={onNew}>
+            {labels.newBtn}
+          </Button>
+        </div>
+        {/* 状态筛选 */}
+        <div className="flex items-center gap-1 pb-1">
+          {['全部', 'doing', 'done'].map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setStatusFilter(s)}
+              className={cn(
+                'text-[11px] px-2 py-1 rounded-full border transition-colors',
+                statusFilter === s
+                  ? 'bg-primary/10 border-primary/40 text-primary font-medium'
+                  : 'border-border text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {s === '全部' ? labels.all : labels.statusOptions[s]}
+            </button>
+          ))}
+        </div>
+        {/* 类型 Tab（带计数，横向滚动） */}
+        <div className="flex items-center gap-1 pb-2 overflow-x-auto no-scrollbar">
+          <button
+            type="button"
+            onClick={() => setTypeFilter('全部')}
+            className={cn(
+              'shrink-0 text-[11px] px-2.5 py-1 rounded-full border transition-colors',
+              typeFilter === '全部'
+                ? 'bg-primary/10 border-primary/40 text-primary font-medium'
+                : 'border-border text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {labels.all} {items.length}
+          </button>
+          {Object.keys(labels.typeOptions).map((type) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => setTypeFilter(type)}
+              className={cn(
+                'shrink-0 text-[11px] px-2.5 py-1 rounded-full border transition-colors',
+                typeFilter === type
+                  ? 'bg-primary/10 border-primary/40 text-primary font-medium'
+                  : 'border-border text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {labels.typeOptions[type]} {typeCounts.get(type) ?? 0}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="flex-1 overflow-y-auto p-2">
-        <Button variant="ghost" size="sm" className="w-full mb-2 text-primary" onClick={onNew}>
-          {labels.newBtn}
-        </Button>
         {items.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-8">{labels.empty}</p>
+        ) : filtered.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-8">{labels.search}</p>
         ) : (
-          items.map((c) => (
+          filtered.map((c) => (
             <button
               key={c.id}
               type="button"
@@ -291,9 +377,26 @@ export function ConsumptionListPanel({
               )}
               onClick={() => onSelect(c.id)}
             >
-              <div className="font-medium truncate">{c.title}</div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">
-                {labels.typeOptions[c.type]} · {'⭐'.repeat(c.rating)} · {labels.statusOptions[c.status]}
+              <div className="flex items-center gap-2.5 min-w-0">
+                {c.cover ? (
+                  <img
+                    src={coverUrl(c.cover)}
+                    alt=""
+                    className="w-8 h-11 object-cover rounded shrink-0"
+                  />
+                ) : (
+                  <div className="w-8 h-11 rounded bg-muted shrink-0 grid place-items-center text-base">
+                    📦
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <div className="font-medium truncate">{c.title}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                    {labels.typeOptions[c.type]} · {'⭐'.repeat(c.rating)} ·{' '}
+                    {labels.statusOptions[c.status]}
+                    {c.year ? ` · ${c.year}` : ''}
+                  </div>
+                </div>
               </div>
             </button>
           ))

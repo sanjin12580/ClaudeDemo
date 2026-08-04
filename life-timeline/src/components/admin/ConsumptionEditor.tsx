@@ -3,6 +3,7 @@
 // 作品信息自动带出 / 我的记录手动填写 / 来源信息折叠
 // ============================================================
 
+import { useEffect, useRef } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
@@ -30,6 +31,8 @@ interface Props {
   container?: HTMLElement | null;
   /** 是否显示「自动获取元数据」（公共页关闭） */
   showMetaFetch?: boolean;
+  /** 是否启用标题防抖自动搜索（公共页开启；管理后台由父组件管理防抖） */
+  autoSearch?: boolean;
   onField: <K extends keyof ConsumptionFormShape>(
     field: K,
     value: ConsumptionFormShape[K],
@@ -48,6 +51,7 @@ export default function ConsumptionEditor({
   t,
   container,
   showMetaFetch = true,
+  autoSearch = false,
   onField,
   onSubmit,
   onDelete,
@@ -56,6 +60,21 @@ export default function ConsumptionEditor({
 }: Props) {
   const coverPreview =
     form.cover.trim() && (form.cover.startsWith('http') ? form.cover : to(form.cover));
+
+  // 标题/类型变化后防抖自动搜索（仅公共页场景启用，管理后台由 AdminPanel 管理）
+  const autoSearchTimer = useRef<number | undefined>(undefined);
+  const fetchMetaRef = useRef(onFetchMetadata);
+  fetchMetaRef.current = onFetchMetadata;
+  useEffect(() => {
+    if (!showMetaFetch || !autoSearch) return;
+    const title = form.title.trim();
+    if (!title) return;
+    window.clearTimeout(autoSearchTimer.current);
+    autoSearchTimer.current = window.setTimeout(() => {
+      fetchMetaRef.current();
+    }, 600);
+    return () => window.clearTimeout(autoSearchTimer.current);
+  }, [form.title, form.type, showMetaFetch, autoSearch]);
 
   // 按类型分组：影视（movie/tv/anime）与书籍（book/novel），同名书影不再互相淹没
   const isBook = (c: MetadataCandidate) =>

@@ -10,12 +10,45 @@ import { loadGoals } from './parseGoals';
 import { loadBucketList } from './parseBucketList';
 import { loadMedia } from './parseMedia';
 import { loadProfile } from './parseProfile';
-import { provinceFromLocation } from './regions';
+import {
+  provinceFromLocation,
+  provinceFromLocationCoords,
+  type ProvinceFeatureLike,
+} from './regions';
+import { BUILTIN_LOCATIONS, loadLocationCache } from './geocode';
+import chinaGeoJson from '../data/china.json';
 import { siteConfig } from '../site.config';
 import type { ConsumptionItem } from './parseConsumptions';
 
 /** 预期寿命（与 LifeCounter 保持一致） */
 export const EXPECTED_YEARS = 80;
+
+/** 省份 GeoJSON features（ray-casting 兜底用） */
+const PROVINCE_FEATURES = (chinaGeoJson as { features: unknown[] })
+  .features as ProvinceFeatureLike[];
+
+/** 地点坐标缓存（构建期本地文件，无网络依赖） */
+const LOCATION_CACHE = loadLocationCache();
+
+/**
+ * 地点 → 省份：字符串映射优先，未命中时用内置坐标/缓存坐标做点面包含兜底
+ */
+function provinceForLocation(name: string): string | null {
+  const direct = provinceFromLocation(name);
+  if (direct) return direct;
+  const builtin = BUILTIN_LOCATIONS[name];
+  const cached = LOCATION_CACHE[name];
+  const coord = builtin ?? cached;
+  if (coord) {
+    return provinceFromLocationCoords(
+      name,
+      coord.lon,
+      coord.lat,
+      PROVINCE_FEATURES,
+    );
+  }
+  return null;
+}
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -156,7 +189,7 @@ export async function loadLifeStats(): Promise<LifeStats> {
     if (!event.location) continue;
     locations.add(event.location);
     cities.add(event.location);
-    const province = provinceFromLocation(event.location);
+    const province = provinceForLocation(event.location);
     if (province) provinces.add(province);
   }
 

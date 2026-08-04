@@ -297,3 +297,18 @@ html.transitioning *::after {
 .dark .leaflet-control-attribution a {
   color: #93c5fd;
 }
+
+/* 旅行地图 — 无底图模式（柔和网格背景） */
+.travel-map-no-tiles {
+  background-color: #f8fafc;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+.dark .travel-map-no-tiles {
+  background-color: #0f172a;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+}
